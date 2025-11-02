@@ -1,15 +1,53 @@
 import { useState, useEffect } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
-import { getUser, clearToken, clearUser, getComplaint, withdrawComplaint, updateComplaint } from "../services/api";
+import {
+  getUser,
+  clearToken,
+  clearUser,
+  getComplaint,
+  withdrawComplaint,
+  updateComplaint,
+  getOfficers,
+  assignOfficer,
+  unassignOfficer,
+  addInternalNote,
+  getInternalNotes,
+  addPublicUpdate,
+  getPublicUpdates,
+  updateComplaintStatus,
+} from "../services/api";
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
 import { Label } from "../components/ui/label";
 import { Textarea } from "../components/ui/textarea";
 import { Select } from "../components/ui/select";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "../components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from "../components/ui/card";
 import { Alert, AlertDescription } from "../components/ui/alert";
 import { Badge } from "../components/ui/badge";
-import { FileText, List, LogOut, ArrowLeft, Edit2, Trash2, AlertCircle, Calendar, User, Tag, AlertTriangle, Save, X, Download } from "lucide-react";
+import {
+  FileText,
+  List,
+  LogOut,
+  ArrowLeft,
+  Edit2,
+  Trash2,
+  AlertCircle,
+  Calendar,
+  User,
+  Tag,
+  AlertTriangle,
+  Save,
+  X,
+  Download,
+  Users,
+  MessageSquare,
+  Bell,
+} from "lucide-react";
 
 export default function ComplaintDetails() {
   const { id } = useParams();
@@ -20,6 +58,12 @@ export default function ComplaintDetails() {
   const [editing, setEditing] = useState(false);
   const [editForm, setEditForm] = useState({});
   const [error, setError] = useState("");
+  const [officers, setOfficers] = useState([]);
+  const [internalNotes, setInternalNotes] = useState([]);
+  const [publicUpdates, setPublicUpdates] = useState([]);
+  const [newInternalNote, setNewInternalNote] = useState("");
+  const [newPublicUpdate, setNewPublicUpdate] = useState("");
+  const [selectedOfficerId, setSelectedOfficerId] = useState("");
 
   useEffect(() => {
     if (!user) {
@@ -39,10 +83,97 @@ export default function ComplaintDetails() {
         category: data.category,
         priority: data.priority,
       });
+
+      if (user.role === "ADMIN") {
+        const officersData = await getOfficers();
+        setOfficers(officersData);
+        setSelectedOfficerId(data.assignedOfficer?.id || "");
+      }
+
+      if (user.role === "ADMIN" || user.role === "OFFICER") {
+        const notesData = await getInternalNotes(id);
+        setInternalNotes(notesData);
+      }
+
+      if (user.role !== "OFFICER") {
+        const updatesData = await getPublicUpdates(id);
+        setPublicUpdates(updatesData);
+      }
     } catch (err) {
       setError(err.message);
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function handleAssignOfficer(officerId) {
+    try {
+      await assignOfficer(id, officerId);
+      loadComplaint();
+    } catch (err) {
+      setError(err.message);
+    }
+  }
+
+  async function handleUnassignOfficer() {
+    try {
+      await unassignOfficer(id);
+      await loadComplaint();
+    } catch (err) {
+      setError(err.message);
+    }
+  }
+
+  async function handleMarkCompleted() {
+    try {
+      await updateComplaintStatus(id, "COMPLETED");
+      await loadComplaint();
+    } catch (err) {
+      setError(err.message);
+    }
+  }
+
+  async function handleMarkResolved() {
+    try {
+      await updateComplaintStatus(id, "RESOLVED");
+      await loadComplaint();
+    } catch (err) {
+      setError(err.message);
+    }
+  }
+
+  async function handleAdminWithdraw() {
+    try {
+      await updateComplaintStatus(id, "WITHDRAWN");
+      await loadComplaint();
+    } catch (err) {
+      setError(err.message);
+    }
+  }
+
+  async function handleAddInternalNote(e) {
+    e.preventDefault();
+    if (!newInternalNote.trim()) return;
+    try {
+      await addInternalNote(id, newInternalNote);
+      setNewInternalNote("");
+      const notesData = await getInternalNotes(id);
+      setInternalNotes(notesData);
+    } catch (err) {
+      setError(err.message);
+    }
+  }
+
+  async function handleAddPublicUpdate(e) {
+    e.preventDefault();
+    if (!newPublicUpdate.trim()) return;
+    try {
+      await addPublicUpdate(id, newPublicUpdate);
+      setNewPublicUpdate("");
+      const updatesData = await getPublicUpdates(id);
+      setPublicUpdates(updatesData);
+    } catch (err) {
+      setError(err.message);
     }
   }
 
@@ -80,11 +211,18 @@ export default function ComplaintDetails() {
     const colors = {
       PENDING: "bg-yellow-100 text-yellow-800 border-yellow-200",
       IN_PROGRESS: "bg-blue-100 text-blue-800 border-blue-200",
+      COMPLETED: "bg-indigo-100 text-indigo-800 border-indigo-200",
       RESOLVED: "bg-green-100 text-green-800 border-green-200",
       REJECTED: "bg-red-100 text-red-800 border-red-200",
-      WITHDRAWN: "bg-gray-100 text-gray-800 border-gray-200"
+      WITHDRAWN: "bg-gray-100 text-gray-800 border-gray-200",
     };
     return colors[status] || "bg-gray-100 text-gray-800";
+  };
+
+  // For Citizens: mask COMPLETED as IN_PROGRESS on the details page
+  const displayStatusForRole = (status) => {
+    if (user.role === "CITIZEN" && status === "COMPLETED") return "IN_PROGRESS";
+    return status;
   };
 
   const getPriorityColor = (priority) => {
@@ -92,7 +230,7 @@ export default function ComplaintDetails() {
       LOW: "bg-gray-100 text-gray-700 border-gray-200",
       MEDIUM: "bg-blue-100 text-blue-700 border-blue-200",
       HIGH: "bg-orange-100 text-orange-700 border-orange-200",
-      URGENT: "bg-red-100 text-red-700 border-red-200"
+      URGENT: "bg-red-100 text-red-700 border-red-200",
     };
     return colors[priority] || "bg-gray-100 text-gray-700";
   };
@@ -177,7 +315,11 @@ export default function ComplaintDetails() {
                   My Complaints
                 </Button>
               </Link>
-              <Button variant="outline" onClick={handleLogout} className="gap-2">
+              <Button
+                variant="outline"
+                onClick={handleLogout}
+                className="gap-2"
+              >
                 <LogOut className="w-4 h-4" />
                 Logout
               </Button>
@@ -202,7 +344,7 @@ export default function ComplaintDetails() {
         )}
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <div className="lg:col-span-2">
+          <div className="lg:col-span-2 space-y-6">
             <Card className="border-0 shadow-md">
               <CardHeader>
                 <div className="flex items-start justify-between">
@@ -211,26 +353,53 @@ export default function ComplaintDetails() {
                       {editing ? "Edit Complaint" : complaint.title}
                     </CardTitle>
                     <div className="flex gap-2">
-                      <Badge className={getStatusColor(complaint.status) + " border"}>
-                        {complaint.status.replace("_", " ")}
+                      <Badge
+                        className={
+                          getStatusColor(
+                            displayStatusForRole(complaint.status)
+                          ) + " border"
+                        }
+                      >
+                        {displayStatusForRole(complaint.status).replace(
+                          "_",
+                          " "
+                        )}
                       </Badge>
-                      <Badge className={getPriorityColor(complaint.priority) + " border"}>
+                      <Badge
+                        className={
+                          getPriorityColor(complaint.priority) + " border"
+                        }
+                      >
                         {complaint.priority}
                       </Badge>
                     </div>
                   </div>
-                  {complaint.status === "PENDING" && !editing && (
-                    <div className="flex gap-2">
-                      <Button onClick={() => setEditing(true)} variant="outline" size="sm" className="gap-2">
-                        <Edit2 className="w-4 h-4" />
-                        Edit
-                      </Button>
-                      <Button onClick={handleWithdraw} variant="destructive" size="sm" className="gap-2">
-                        <Trash2 className="w-4 h-4" />
-                        Withdraw
-                      </Button>
-                    </div>
-                  )}
+                  {complaint.status === "PENDING" &&
+                    !editing &&
+                    user.role === "CITIZEN" &&
+                    complaint.reporter &&
+                    complaint.reporter.id === user.id && (
+                      <div className="flex gap-2">
+                        <Button
+                          onClick={() => setEditing(true)}
+                          variant="outline"
+                          size="sm"
+                          className="gap-2"
+                        >
+                          <Edit2 className="w-4 h-4" />
+                          Edit
+                        </Button>
+                        <Button
+                          onClick={handleWithdraw}
+                          variant="destructive"
+                          size="sm"
+                          className="gap-2"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                          Withdraw
+                        </Button>
+                      </div>
+                    )}
                 </div>
               </CardHeader>
               <CardContent>
@@ -242,7 +411,9 @@ export default function ComplaintDetails() {
                         id="edit-title"
                         type="text"
                         value={editForm.title}
-                        onChange={(e) => setEditForm({ ...editForm, title: e.target.value })}
+                        onChange={(e) =>
+                          setEditForm({ ...editForm, title: e.target.value })
+                        }
                         required
                       />
                     </div>
@@ -252,7 +423,12 @@ export default function ComplaintDetails() {
                       <Textarea
                         id="edit-description"
                         value={editForm.description}
-                        onChange={(e) => setEditForm({ ...editForm, description: e.target.value })}
+                        onChange={(e) =>
+                          setEditForm({
+                            ...editForm,
+                            description: e.target.value,
+                          })
+                        }
                         required
                         rows={6}
                       />
@@ -264,7 +440,12 @@ export default function ComplaintDetails() {
                         <Select
                           id="edit-category"
                           value={editForm.category}
-                          onChange={(e) => setEditForm({ ...editForm, category: e.target.value })}
+                          onChange={(e) =>
+                            setEditForm({
+                              ...editForm,
+                              category: e.target.value,
+                            })
+                          }
                         >
                           <option value="SANITATION">Sanitation</option>
                           <option value="TRAFFIC">Traffic</option>
@@ -278,7 +459,12 @@ export default function ComplaintDetails() {
                         <Select
                           id="edit-priority"
                           value={editForm.priority}
-                          onChange={(e) => setEditForm({ ...editForm, priority: e.target.value })}
+                          onChange={(e) =>
+                            setEditForm({
+                              ...editForm,
+                              priority: e.target.value,
+                            })
+                          }
                         >
                           <option value="LOW">Low</option>
                           <option value="MEDIUM">Medium</option>
@@ -292,7 +478,12 @@ export default function ComplaintDetails() {
                         <Save className="w-4 h-4" />
                         Save Changes
                       </Button>
-                      <Button type="button" variant="outline" onClick={() => setEditing(false)} className="gap-2">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() => setEditing(false)}
+                        className="gap-2"
+                      >
                         <X className="w-4 h-4" />
                         Cancel
                       </Button>
@@ -301,16 +492,22 @@ export default function ComplaintDetails() {
                 ) : (
                   <div className="space-y-6">
                     <div>
-                      <h3 className="text-sm font-semibold text-gray-700 mb-2">Description</h3>
-                      <p className="text-gray-900 whitespace-pre-wrap">{complaint.description}</p>
+                      <h3 className="text-sm font-semibold text-gray-700 mb-2">
+                        Description
+                      </h3>
+                      <p className="text-gray-900 whitespace-pre-wrap">
+                        {complaint.description}
+                      </p>
                     </div>
 
                     {complaint.attachmentPath && (
                       <div>
-                        <h3 className="text-sm font-semibold text-gray-700 mb-2">Attachment</h3>
-                        <a 
-                          href={complaint.attachmentPath} 
-                          target="_blank" 
+                        <h3 className="text-sm font-semibold text-gray-700 mb-2">
+                          Attachment
+                        </h3>
+                        <a
+                          href={complaint.attachmentPath}
+                          target="_blank"
                           rel="noopener noreferrer"
                           className="inline-flex items-center gap-2 text-violet-600 hover:text-violet-700 hover:underline"
                         >
@@ -323,6 +520,122 @@ export default function ComplaintDetails() {
                 )}
               </CardContent>
             </Card>
+
+            {/* Move Public Updates and Internal Notes into the left column to avoid large vertical gaps */}
+            {user.role !== "OFFICER" && (
+              <Card className="border-0 shadow-md">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Bell className="w-5 h-5" />
+                    Public Updates
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    {publicUpdates.length > 0 ? (
+                      <div className="space-y-3 mb-4">
+                        {publicUpdates.map((update) => (
+                          <div
+                            key={update.id}
+                            className="bg-blue-50 border border-blue-200 rounded-lg p-4"
+                          >
+                            <div className="flex justify-between items-start mb-2">
+                              <p className="font-semibold text-sm text-blue-900">
+                                {update.authorName}
+                              </p>
+                              <p className="text-xs text-blue-600">
+                                {new Date(update.createdAt).toLocaleString()}
+                              </p>
+                            </div>
+                            <p className="text-blue-800 text-sm">
+                              {update.content}
+                            </p>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="text-gray-500 text-sm mb-4">
+                        No public updates yet
+                      </p>
+                    )}
+                    {user.role === "ADMIN" && (
+                      <form
+                        onSubmit={handleAddPublicUpdate}
+                        className="space-y-3"
+                      >
+                        <Textarea
+                          placeholder="Add a public update..."
+                          value={newPublicUpdate}
+                          onChange={(e) => setNewPublicUpdate(e.target.value)}
+                          rows={3}
+                        />
+                        <Button type="submit" className="w-full">
+                          Add Public Update
+                        </Button>
+                      </form>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {(user.role === "ADMIN" || user.role === "OFFICER") && (
+              <Card className="border-0 shadow-md">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <MessageSquare className="w-5 h-5" />
+                    Internal Notes (Private)
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    {internalNotes.length > 0 ? (
+                      <div className="space-y-3 mb-4">
+                        {internalNotes.map((note) => (
+                          <div
+                            key={note.id}
+                            className="bg-gray-50 border border-gray-200 rounded-lg p-4"
+                          >
+                            <div className="flex justify-between items-start mb-2">
+                              <p className="font-semibold text-sm text-gray-900">
+                                {note.authorName}
+                              </p>
+                              <Badge className="bg-gray-200 text-gray-700 text-xs">
+                                {note.authorRole}
+                              </Badge>
+                            </div>
+                            <p className="text-gray-700 text-sm mb-2">
+                              {note.content}
+                            </p>
+                            <p className="text-xs text-gray-500">
+                              {new Date(note.createdAt).toLocaleString()}
+                            </p>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="text-gray-500 text-sm mb-4">
+                        No internal notes yet
+                      </p>
+                    )}
+                    <form
+                      onSubmit={handleAddInternalNote}
+                      className="space-y-3"
+                    >
+                      <Textarea
+                        placeholder="Add an internal note..."
+                        value={newInternalNote}
+                        onChange={(e) => setNewInternalNote(e.target.value)}
+                        rows={3}
+                      />
+                      <Button type="submit" className="w-full">
+                        Add Internal Note
+                      </Button>
+                    </form>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
           </div>
 
           <div className="space-y-6">
@@ -335,7 +648,9 @@ export default function ComplaintDetails() {
                   <Tag className="w-4 h-4 text-gray-500" />
                   <div>
                     <p className="text-gray-500">Complaint ID</p>
-                    <p className="font-semibold text-gray-900">#{complaint.id}</p>
+                    <p className="font-semibold text-gray-900">
+                      #{complaint.id}
+                    </p>
                   </div>
                 </div>
 
@@ -343,7 +658,9 @@ export default function ComplaintDetails() {
                   <FileText className="w-4 h-4 text-gray-500" />
                   <div>
                     <p className="text-gray-500">Category</p>
-                    <p className="font-semibold text-gray-900">{complaint.category}</p>
+                    <p className="font-semibold text-gray-900">
+                      {complaint.category}
+                    </p>
                   </div>
                 </div>
 
@@ -351,7 +668,9 @@ export default function ComplaintDetails() {
                   <AlertTriangle className="w-4 h-4 text-gray-500" />
                   <div>
                     <p className="text-gray-500">Priority</p>
-                    <p className="font-semibold text-gray-900">{complaint.priority}</p>
+                    <p className="font-semibold text-gray-900">
+                      {complaint.priority}
+                    </p>
                   </div>
                 </div>
 
@@ -360,11 +679,14 @@ export default function ComplaintDetails() {
                   <div>
                     <p className="text-gray-500">Submitted On</p>
                     <p className="font-semibold text-gray-900">
-                      {new Date(complaint.createdAt).toLocaleDateString("en-US", {
-                        year: "numeric",
-                        month: "long",
-                        day: "numeric"
-                      })}
+                      {new Date(complaint.createdAt).toLocaleDateString(
+                        "en-US",
+                        {
+                          year: "numeric",
+                          month: "long",
+                          day: "numeric",
+                        }
+                      )}
                     </p>
                   </div>
                 </div>
@@ -375,11 +697,14 @@ export default function ComplaintDetails() {
                     <div>
                       <p className="text-gray-500">Last Updated</p>
                       <p className="font-semibold text-gray-900">
-                        {new Date(complaint.updatedAt).toLocaleDateString("en-US", {
-                          year: "numeric",
-                          month: "long",
-                          day: "numeric"
-                        })}
+                        {new Date(complaint.updatedAt).toLocaleDateString(
+                          "en-US",
+                          {
+                            year: "numeric",
+                            month: "long",
+                            day: "numeric",
+                          }
+                        )}
                       </p>
                     </div>
                   </div>
@@ -390,12 +715,50 @@ export default function ComplaintDetails() {
                     <User className="w-4 h-4 text-gray-500" />
                     <div>
                       <p className="text-gray-500">Submitter</p>
-                      <p className="font-semibold text-gray-900">{complaint.submitterName}</p>
+                      <p className="font-semibold text-gray-900">
+                        {complaint.submitterName}
+                      </p>
                     </div>
                   </div>
                 )}
               </CardContent>
             </Card>
+
+            {/* Status Actions */}
+            {(user.role === "OFFICER" || user.role === "ADMIN") && (
+              <Card className="border-0 shadow-md">
+                <CardHeader>
+                  <CardTitle className="text-lg">Status Actions</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  {user.role === "OFFICER" &&
+                    complaint.assignedOfficer &&
+                    complaint.assignedOfficer.id === user.id &&
+                    complaint.status === "IN_PROGRESS" && (
+                      <Button className="w-full" onClick={handleMarkCompleted}>
+                        Mark as Completed
+                      </Button>
+                    )}
+                  {user.role === "ADMIN" &&
+                    complaint.status === "COMPLETED" && (
+                      <Button className="w-full" onClick={handleMarkResolved}>
+                        Mark as Resolved
+                      </Button>
+                    )}
+                  {user.role === "ADMIN" &&
+                    complaint.status !== "RESOLVED" &&
+                    complaint.status !== "REJECTED" && (
+                      <Button
+                        variant="outline"
+                        className="w-full"
+                        onClick={handleAdminWithdraw}
+                      >
+                        Withdraw Complaint
+                      </Button>
+                    )}
+                </CardContent>
+              </Card>
+            )}
 
             {complaint.status === "RESOLVED" && complaint.resolvedAt && (
               <Card className="border-0 shadow-md bg-green-50">
@@ -404,10 +767,71 @@ export default function ComplaintDetails() {
                     <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-3">
                       <AlertCircle className="w-6 h-6 text-green-600" />
                     </div>
-                    <h3 className="font-semibold text-green-900 mb-1">Resolved</h3>
+                    <h3 className="font-semibold text-green-900 mb-1">
+                      Resolved
+                    </h3>
                     <p className="text-sm text-green-700">
                       {new Date(complaint.resolvedAt).toLocaleDateString()}
                     </p>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {user.role === "ADMIN" && (
+              <Card className="border-0 shadow-md">
+                <CardHeader>
+                  <CardTitle className="text-lg flex items-center gap-2">
+                    <Users className="w-5 h-5" />
+                    Assign Officer
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-3">
+                    {complaint.assignedOfficer && (
+                      <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-2">
+                        <p className="text-sm text-blue-700 font-medium">
+                          Currently Assigned:
+                        </p>
+                        <p className="text-sm text-blue-900">
+                          {complaint.assignedOfficer.name}
+                        </p>
+                        <p className="text-xs text-blue-600">
+                          {complaint.assignedOfficer.email}
+                        </p>
+                      </div>
+                    )}
+                    <Label htmlFor="officer-select">Select Officer</Label>
+                    <Select
+                      id="officer-select"
+                      onChange={(e) => setSelectedOfficerId(e.target.value)}
+                      value={selectedOfficerId}
+                    >
+                      <option value="">-- Select Officer --</option>
+                      {officers.map((officer) => (
+                        <option key={officer.id} value={officer.id}>
+                          {officer.name} ({officer.email})
+                        </option>
+                      ))}
+                    </Select>
+                    <div className="flex gap-2">
+                      <Button
+                        onClick={() => handleAssignOfficer(selectedOfficerId)}
+                        className="flex-1"
+                        disabled={!selectedOfficerId}
+                      >
+                        Submit
+                      </Button>
+                      {complaint.assignedOfficer && (
+                        <Button
+                          variant="outline"
+                          onClick={handleUnassignOfficer}
+                          className="flex-1"
+                        >
+                          Unassign
+                        </Button>
+                      )}
+                    </div>
                   </div>
                 </CardContent>
               </Card>

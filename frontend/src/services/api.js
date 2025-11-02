@@ -28,7 +28,7 @@ export async function createComplaint(formData) {
   const token = getToken();
   const res = await fetch("/api/complaints", {
     method: "POST",
-    headers: token ? { "Authorization": `Bearer ${token}` } : {},
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
     body: formData,
   });
   const data = await res.json().catch(() => ({}));
@@ -41,7 +41,7 @@ export async function createComplaint(formData) {
 export async function getComplaints() {
   const token = getToken();
   const res = await fetch("/api/complaints", {
-    headers: { "Authorization": `Bearer ${token}` },
+    headers: { Authorization: `Bearer ${token}` },
   });
   const data = await res.json().catch(() => ({}));
   if (!res.ok) {
@@ -53,7 +53,7 @@ export async function getComplaints() {
 export async function getComplaint(id) {
   const token = getToken();
   const res = await fetch(`/api/complaints/${id}`, {
-    headers: { "Authorization": `Bearer ${token}` },
+    headers: { Authorization: `Bearer ${token}` },
   });
   const data = await res.json().catch(() => ({}));
   if (!res.ok) {
@@ -67,7 +67,7 @@ export async function updateComplaint(id, data) {
   const res = await fetch(`/api/complaints/${id}`, {
     method: "PUT",
     headers: {
-      "Authorization": `Bearer ${token}`,
+      Authorization: `Bearer ${token}`,
       "Content-Type": "application/json",
     },
     body: JSON.stringify(data),
@@ -83,7 +83,7 @@ export async function withdrawComplaint(id) {
   const token = getToken();
   const res = await fetch(`/api/complaints/${id}/withdraw`, {
     method: "POST",
-    headers: { "Authorization": `Bearer ${token}` },
+    headers: { Authorization: `Bearer ${token}` },
   });
   const data = await res.json().catch(() => ({}));
   if (!res.ok) {
@@ -97,7 +97,7 @@ export async function updateComplaintStatus(id, status, adminNotes) {
   const res = await fetch(`/api/complaints/${id}/status`, {
     method: "POST",
     headers: {
-      "Authorization": `Bearer ${token}`,
+      Authorization: `Bearer ${token}`,
       "Content-Type": "application/json",
     },
     body: JSON.stringify({ status, adminNotes }),
@@ -132,4 +132,116 @@ export function getUser() {
 
 export function clearUser() {
   localStorage.removeItem("user");
+}
+
+export async function getOfficers() {
+  const token = getToken();
+  const res = await fetch("/api/complaints/officers", {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    throw new Error(data.message || "Failed to fetch officers");
+  }
+  return data;
+}
+
+export async function assignOfficer(complaintId, officerId) {
+  const token = getToken();
+  const res = await fetch(`/api/complaints/${complaintId}/assign`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ officerId }),
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    throw new Error(data.message || "Failed to assign officer");
+  }
+  return data;
+}
+
+export async function unassignOfficer(complaintId) {
+  const token = getToken();
+  const res = await fetch(`/api/complaints/${complaintId}/unassign`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    throw new Error(data.message || "Failed to unassign officer");
+  }
+  return data;
+}
+
+export async function addInternalNote(complaintId, content) {
+  const token = getToken();
+  const res = await fetch(`/api/complaints/${complaintId}/internal-notes`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ content }),
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    throw new Error(data.message || "Failed to add internal note");
+  }
+  return data;
+}
+
+export async function getInternalNotes(complaintId) {
+  const token = getToken();
+  const res = await fetch(`/api/complaints/${complaintId}/internal-notes`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    throw new Error(data.message || "Failed to fetch internal notes");
+  }
+  return data;
+}
+
+export async function addPublicUpdate(complaintId, content) {
+  const token = getToken();
+  const res = await fetch(`/api/complaints/${complaintId}/public-updates`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ content }),
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    throw new Error(data.message || "Failed to add public update");
+  }
+  return data;
+}
+
+export async function getPublicUpdates(complaintId) {
+  const token = getToken();
+  const res = await fetch(`/api/complaints/${complaintId}/public-updates`, {
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    throw new Error(data.message || "Failed to fetch public updates");
+  }
+  return data;
+}
+
+export async function getAssignedComplaints() {
+  const token = getToken();
+  const res = await fetch("/api/complaints/assigned", {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    throw new Error(data.message || "Failed to fetch assigned complaints");
+  }
+  return data;
 }
