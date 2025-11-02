@@ -43,6 +43,10 @@ public class Complaint {
     @JoinColumn(name = "user_id")
     private User reporter;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "assigned_officer_id")
+    private User assignedOfficer;
+
     @Column
     private String attachmentPath;
 

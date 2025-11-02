@@ -1,14 +1,35 @@
 import { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
-import { createComplaint, getUser, clearToken, clearUser } from "../services/api";
+import {
+  createComplaint,
+  getUser,
+  clearToken,
+  clearUser,
+} from "../services/api";
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
 import { Label } from "../components/ui/label";
 import { Textarea } from "../components/ui/textarea";
 import { Select } from "../components/ui/select";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "../components/ui/card";
 import { Alert, AlertDescription } from "../components/ui/alert";
-import { FileText, Plus, List, LogOut, AlertCircle, Upload, CheckCircle2, ArrowLeft, Eye } from "lucide-react";
+import {
+  FileText,
+  Plus,
+  List,
+  LogOut,
+  AlertCircle,
+  Upload,
+  CheckCircle2,
+  ArrowLeft,
+  Eye,
+} from "lucide-react";
 
 export default function NewComplaint() {
   const navigate = useNavigate();
@@ -26,6 +47,12 @@ export default function NewComplaint() {
 
   if (!user) {
     navigate("/login", { replace: true });
+    return null;
+  }
+
+  if (user && user.role !== "CITIZEN") {
+    // Only citizens can access the new complaint page
+    navigate("/dashboard", { replace: true });
     return null;
   }
 
@@ -87,7 +114,11 @@ export default function NewComplaint() {
                     My Complaints
                   </Button>
                 </Link>
-                <Button variant="outline" onClick={handleLogout} className="gap-2">
+                <Button
+                  variant="outline"
+                  onClick={handleLogout}
+                  className="gap-2"
+                >
                   <LogOut className="w-4 h-4" />
                   Logout
                 </Button>
@@ -102,9 +133,14 @@ export default function NewComplaint() {
               <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6">
                 <CheckCircle2 className="w-12 h-12 text-green-600" />
               </div>
-              <h2 className="text-3xl font-bold text-gray-900 mb-4">Complaint Submitted Successfully!</h2>
+              <h2 className="text-3xl font-bold text-gray-900 mb-4">
+                Complaint Submitted Successfully!
+              </h2>
               <p className="text-lg text-gray-600 mb-8">
-                Your complaint has been registered with ID: <span className="font-semibold text-violet-600">#{success.id}</span>
+                Your complaint has been registered with ID:{" "}
+                <span className="font-semibold text-violet-600">
+                  #{success.id}
+                </span>
               </p>
               <div className="flex gap-4 justify-center">
                 <Link to="/dashboard">
@@ -151,7 +187,11 @@ export default function NewComplaint() {
                   My Complaints
                 </Button>
               </Link>
-              <Button variant="outline" onClick={handleLogout} className="gap-2">
+              <Button
+                variant="outline"
+                onClick={handleLogout}
+                className="gap-2"
+              >
                 <LogOut className="w-4 h-4" />
                 Logout
               </Button>
@@ -168,8 +208,12 @@ export default function NewComplaint() {
               Back
             </Button>
           </Link>
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">Submit New Complaint</h1>
-          <p className="text-gray-600">Fill out the form below to submit your complaint</p>
+          <h1 className="text-3xl font-bold text-gray-900 mb-2">
+            Submit New Complaint
+          </h1>
+          <p className="text-gray-600">
+            Fill out the form below to submit your complaint
+          </p>
         </div>
 
         <Card className="border-0 shadow-md">
@@ -183,7 +227,9 @@ export default function NewComplaint() {
               )}
 
               <div className="space-y-2">
-                <Label htmlFor="title">Title <span className="text-red-500">*</span></Label>
+                <Label htmlFor="title">
+                  Title <span className="text-red-500">*</span>
+                </Label>
                 <Input
                   id="title"
                   type="text"
@@ -196,7 +242,9 @@ export default function NewComplaint() {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="description">Description <span className="text-red-500">*</span></Label>
+                <Label htmlFor="description">
+                  Description <span className="text-red-500">*</span>
+                </Label>
                 <Textarea
                   id="description"
                   name="description"
@@ -210,8 +258,15 @@ export default function NewComplaint() {
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="space-y-2">
-                  <Label htmlFor="category">Category <span className="text-red-500">*</span></Label>
-                  <Select id="category" name="category" value={form.category} onChange={onChange}>
+                  <Label htmlFor="category">
+                    Category <span className="text-red-500">*</span>
+                  </Label>
+                  <Select
+                    id="category"
+                    name="category"
+                    value={form.category}
+                    onChange={onChange}
+                  >
                     <option value="SANITATION">🧹 Sanitation</option>
                     <option value="TRAFFIC">🚗 Traffic</option>
                     <option value="WATER">💧 Water</option>
@@ -220,8 +275,15 @@ export default function NewComplaint() {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="priority">Priority <span className="text-red-500">*</span></Label>
-                  <Select id="priority" name="priority" value={form.priority} onChange={onChange}>
+                  <Label htmlFor="priority">
+                    Priority <span className="text-red-500">*</span>
+                  </Label>
+                  <Select
+                    id="priority"
+                    name="priority"
+                    value={form.priority}
+                    onChange={onChange}
+                  >
                     <option value="LOW">Low</option>
                     <option value="MEDIUM">Medium</option>
                     <option value="HIGH">High</option>
@@ -249,7 +311,11 @@ export default function NewComplaint() {
               </div>
 
               <div className="flex gap-4 pt-4">
-                <Button type="submit" className="flex-1 gap-2" disabled={loading}>
+                <Button
+                  type="submit"
+                  className="flex-1 gap-2"
+                  disabled={loading}
+                >
                   {loading ? (
                     <>
                       <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>

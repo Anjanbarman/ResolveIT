@@ -1,10 +1,31 @@
 import { useState, useEffect } from "react";
 import { useNavigate, Link } from "react-router-dom";
-import { getUser, clearToken, clearUser, getComplaints } from "../services/api";
+import {
+  getUser,
+  clearToken,
+  clearUser,
+  getComplaints,
+  getAssignedComplaints,
+} from "../services/api";
 import { Button } from "../components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "../components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from "../components/ui/card";
 import { Badge } from "../components/ui/badge";
-import { FileText, Plus, List, LogOut, Filter, Eye, Clock, AlertCircle, CheckCircle2 } from "lucide-react";
+import {
+  FileText,
+  Plus,
+  List,
+  LogOut,
+  Filter,
+  Eye,
+  Clock,
+  AlertCircle,
+  CheckCircle2,
+} from "lucide-react";
 
 export default function ComplaintList() {
   const navigate = useNavigate();
@@ -23,7 +44,10 @@ export default function ComplaintList() {
 
   async function loadComplaints() {
     try {
-      const data = await getComplaints();
+      const data =
+        user.role === "OFFICER"
+          ? await getAssignedComplaints()
+          : await getComplaints();
       setComplaints(data);
     } catch (err) {
       console.error("Failed to load complaints", err);
@@ -40,17 +64,41 @@ export default function ComplaintList() {
 
   if (!user) return null;
 
-  const filteredComplaints = filter === "ALL"
-    ? complaints
-    : complaints.filter(c => c.status === filter);
+  const filteredComplaints = (() => {
+    if (filter === "ALL") return complaints;
+    // Officer-specific pseudo-filter: ASSIGNED
+    if (filter === "ASSIGNED") {
+      // Show only active assignments (exclude terminal states)
+      const terminal = ["RESOLVED", "WITHDRAWN", "REJECTED"];
+      return complaints.filter(
+        (c) =>
+          c.assignedOfficer &&
+          c.assignedOfficer.id &&
+          user &&
+          c.assignedOfficer.id === user.id &&
+          !terminal.includes(c.status)
+      );
+    }
+    // Citizen/Admin: IN_PROGRESS should include COMPLETED (masked as in progress for them)
+    if (
+      (user.role === "CITIZEN" || user.role === "ADMIN") &&
+      filter === "IN_PROGRESS"
+    ) {
+      return complaints.filter(
+        (c) => c.status === "IN_PROGRESS" || c.status === "COMPLETED"
+      );
+    }
+    return complaints.filter((c) => c.status === filter);
+  })();
 
   const getStatusColor = (status) => {
     const colors = {
       PENDING: "bg-yellow-100 text-yellow-800 border-yellow-200",
       IN_PROGRESS: "bg-blue-100 text-blue-800 border-blue-200",
+      COMPLETED: "bg-indigo-100 text-indigo-800 border-indigo-200",
       RESOLVED: "bg-green-100 text-green-800 border-green-200",
       REJECTED: "bg-red-100 text-red-800 border-red-200",
-      WITHDRAWN: "bg-gray-100 text-gray-800 border-gray-200"
+      WITHDRAWN: "bg-gray-100 text-gray-800 border-gray-200",
     };
     return colors[status] || "bg-gray-100 text-gray-800";
   };
@@ -60,17 +108,30 @@ export default function ComplaintList() {
       LOW: "bg-gray-100 text-gray-700 border-gray-200",
       MEDIUM: "bg-blue-100 text-blue-700 border-blue-200",
       HIGH: "bg-orange-100 text-orange-700 border-orange-200",
-      URGENT: "bg-red-100 text-red-700 border-red-200"
+      URGENT: "bg-red-100 text-red-700 border-red-200",
     };
     return colors[priority] || "bg-gray-100 text-gray-700";
   };
 
-  const filterButtons = [
-    { value: "ALL", label: "All", icon: List },
-    { value: "PENDING", label: "Pending", icon: Clock },
-    { value: "IN_PROGRESS", label: "In Progress", icon: AlertCircle },
-    { value: "RESOLVED", label: "Resolved", icon: CheckCircle2 },
-  ];
+  const filterButtons = (() => {
+    if (user.role === "OFFICER") {
+      return [
+        { value: "ALL", label: "All", icon: List },
+        { value: "ASSIGNED", label: "Assigned", icon: List },
+        { value: "IN_PROGRESS", label: "In Progress", icon: AlertCircle },
+        { value: "COMPLETED", label: "Completed", icon: CheckCircle2 },
+        { value: "RESOLVED", label: "Resolved", icon: CheckCircle2 },
+      ];
+    }
+    // Citizen/Admin: hide Completed filter
+    return [
+      { value: "ALL", label: "All", icon: List },
+      // Citizens can still pick Pending
+      { value: "PENDING", label: "Pending", icon: Clock },
+      { value: "IN_PROGRESS", label: "In Progress", icon: AlertCircle },
+      { value: "RESOLVED", label: "Resolved", icon: CheckCircle2 },
+    ];
+  })();
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -96,7 +157,11 @@ export default function ComplaintList() {
                   My Complaints
                 </Button>
               </Link>
-              <Button variant="outline" onClick={handleLogout} className="gap-2">
+              <Button
+                variant="outline"
+                onClick={handleLogout}
+                className="gap-2"
+              >
                 <LogOut className="w-4 h-4" />
                 Logout
               </Button>
@@ -108,22 +173,34 @@ export default function ComplaintList() {
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="flex justify-between items-center mb-8">
           <div>
-            <h1 className="text-3xl font-bold text-gray-900 mb-2">My Complaints</h1>
-            <p className="text-gray-600">View and manage all your complaints</p>
+            <h1 className="text-3xl font-bold text-gray-900 mb-2">
+              {user.role === "OFFICER"
+                ? "Assigned Complaints"
+                : "My Complaints"}
+            </h1>
+            <p className="text-gray-600">
+              {user.role === "OFFICER"
+                ? "Complaints assigned to you"
+                : "View and manage all your complaints"}
+            </p>
           </div>
-          <Link to="/complaints/new">
-            <Button size="lg" className="gap-2">
-              <Plus className="w-5 h-5" />
-              New Complaint
-            </Button>
-          </Link>
+          {user.role === "CITIZEN" && (
+            <Link to="/complaints/new">
+              <Button size="lg" className="gap-2">
+                <Plus className="w-5 h-5" />
+                New Complaint
+              </Button>
+            </Link>
+          )}
         </div>
 
         <Card className="mb-6 border-0 shadow-md">
           <CardContent className="pt-6">
             <div className="flex items-center gap-2 mb-4">
               <Filter className="w-4 h-4 text-gray-600" />
-              <span className="text-sm font-medium text-gray-700">Filter by Status</span>
+              <span className="text-sm font-medium text-gray-700">
+                Filter by Status
+              </span>
             </div>
             <div className="flex flex-wrap gap-2">
               {filterButtons.map((btn) => (
@@ -144,7 +221,8 @@ export default function ComplaintList() {
         <Card className="border-0 shadow-md">
           <CardHeader>
             <CardTitle className="text-xl">
-              {filteredComplaints.length} Complaint{filteredComplaints.length !== 1 ? 's' : ''}
+              {filteredComplaints.length} Complaint
+              {filteredComplaints.length !== 1 ? "s" : ""}
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -158,9 +236,11 @@ export default function ComplaintList() {
                 <FileText className="w-16 h-16 mx-auto text-gray-300 mb-4" />
                 <p className="text-gray-600 mb-2">No complaints found</p>
                 <p className="text-sm text-gray-500 mb-4">
-                  {filter === "ALL" ? "Submit your first complaint to get started" : `No ${filter.toLowerCase().replace("_", " ")} complaints`}
+                  {filter === "ALL"
+                    ? "Submit your first complaint to get started"
+                    : `No ${filter.toLowerCase().replace("_", " ")} complaints`}
                 </p>
-                {filter === "ALL" && (
+                {filter === "ALL" && user.role === "CITIZEN" && (
                   <Link to="/complaints/new">
                     <Button className="gap-2">
                       <Plus className="w-4 h-4" />
@@ -174,29 +254,71 @@ export default function ComplaintList() {
                 <table className="w-full">
                   <thead>
                     <tr className="border-b border-gray-200">
-                      <th className="text-left py-3 px-4 font-semibold text-sm text-gray-600">ID</th>
-                      <th className="text-left py-3 px-4 font-semibold text-sm text-gray-600">Title</th>
-                      <th className="text-left py-3 px-4 font-semibold text-sm text-gray-600">Category</th>
-                      <th className="text-left py-3 px-4 font-semibold text-sm text-gray-600">Priority</th>
-                      <th className="text-left py-3 px-4 font-semibold text-sm text-gray-600">Status</th>
-                      <th className="text-left py-3 px-4 font-semibold text-sm text-gray-600">Created</th>
-                      <th className="text-left py-3 px-4 font-semibold text-sm text-gray-600">Actions</th>
+                      <th className="text-left py-3 px-4 font-semibold text-sm text-gray-600">
+                        ID
+                      </th>
+                      <th className="text-left py-3 px-4 font-semibold text-sm text-gray-600">
+                        Title
+                      </th>
+                      <th className="text-left py-3 px-4 font-semibold text-sm text-gray-600">
+                        Category
+                      </th>
+                      <th className="text-left py-3 px-4 font-semibold text-sm text-gray-600">
+                        Priority
+                      </th>
+                      <th className="text-left py-3 px-4 font-semibold text-sm text-gray-600">
+                        Status
+                      </th>
+                      <th className="text-left py-3 px-4 font-semibold text-sm text-gray-600">
+                        Created
+                      </th>
+                      <th className="text-left py-3 px-4 font-semibold text-sm text-gray-600">
+                        Actions
+                      </th>
                     </tr>
                   </thead>
                   <tbody>
                     {filteredComplaints.map((complaint) => (
-                      <tr key={complaint.id} className="border-b border-gray-100 hover:bg-gray-50 transition-colors">
-                        <td className="py-4 px-4 text-sm font-medium text-gray-900">#{complaint.id}</td>
-                        <td className="py-4 px-4 text-sm text-gray-900 font-medium">{complaint.title}</td>
-                        <td className="py-4 px-4 text-sm text-gray-600">{complaint.category}</td>
+                      <tr
+                        key={complaint.id}
+                        className="border-b border-gray-100 hover:bg-gray-50 transition-colors"
+                      >
+                        <td className="py-4 px-4 text-sm font-medium text-gray-900">
+                          #{complaint.id}
+                        </td>
+                        <td className="py-4 px-4 text-sm text-gray-900 font-medium">
+                          {complaint.title}
+                        </td>
+                        <td className="py-4 px-4 text-sm text-gray-600">
+                          {complaint.category}
+                        </td>
                         <td className="py-4 px-4">
-                          <Badge className={getPriorityColor(complaint.priority) + " border"}>
+                          <Badge
+                            className={
+                              getPriorityColor(complaint.priority) + " border"
+                            }
+                          >
                             {complaint.priority}
                           </Badge>
                         </td>
                         <td className="py-4 px-4">
-                          <Badge className={getStatusColor(complaint.status) + " border"}>
-                            {complaint.status.replace("_", " ")}
+                          <Badge
+                            className={
+                              getStatusColor(
+                                (user.role === "CITIZEN" ||
+                                  user.role === "ADMIN") &&
+                                  complaint.status === "COMPLETED"
+                                  ? "IN_PROGRESS"
+                                  : complaint.status
+                              ) + " border"
+                            }
+                          >
+                            {((user.role === "CITIZEN" ||
+                              user.role === "ADMIN") &&
+                            complaint.status === "COMPLETED"
+                              ? "IN_PROGRESS"
+                              : complaint.status
+                            ).replace("_", " ")}
                           </Badge>
                         </td>
                         <td className="py-4 px-4 text-sm text-gray-600">
