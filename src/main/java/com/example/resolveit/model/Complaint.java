@@ -6,6 +6,7 @@ import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
 
 import java.time.LocalDateTime;
+import java.time.LocalDate;
 
 @Getter
 @Setter
@@ -46,6 +47,15 @@ public class Complaint {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "assigned_officer_id")
     private User assignedOfficer;
+
+    @Column(nullable = false, unique = true, length = 40)
+    private String trackingId;
+
+    @Column
+    private LocalDate targetResolutionDate;
+
+    @Column
+    private LocalDateTime reopenedAt;
 
     @Column
     private String attachmentPath;

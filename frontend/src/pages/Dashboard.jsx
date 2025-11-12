@@ -6,6 +6,8 @@ import {
   clearUser,
   getComplaints,
   getAssignedComplaints,
+  getAdminMetrics,
+  getOfficerMetrics,
 } from "../services/api";
 import { Button } from "../components/ui/button";
 import {
@@ -17,6 +19,11 @@ import {
 } from "../components/ui/card";
 import { Badge } from "../components/ui/badge";
 import {
+  StatusDistributionChart,
+  CategoryBarChart,
+  PriorityBarChart,
+} from "../components/Charts";
+import {
   FileText,
   Plus,
   List,
@@ -26,13 +33,16 @@ import {
   Shield,
   Clock,
   AlertCircle,
+  Home,
+  Info,
 } from "lucide-react";
 
 export default function Dashboard() {
   const navigate = useNavigate();
   const user = getUser();
   const [complaints, setComplaints] = useState([]); // recent (for table)
-  const [allComplaints, setAllComplaints] = useState([]); // full (for stats)
+  const [allComplaints, setAllComplaints] = useState([]); // full list for fallback stats
+  const [metrics, setMetrics] = useState(null); // server metrics
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -51,6 +61,14 @@ export default function Dashboard() {
           : await getComplaints();
       setAllComplaints(data);
       setComplaints(data.slice(0, 5));
+      // Fetch metrics if admin/officer
+      if (user.role === "ADMIN") {
+        const m = await getAdminMetrics();
+        setMetrics(m);
+      } else if (user.role === "OFFICER") {
+        const m = await getOfficerMetrics();
+        setMetrics(m);
+      }
     } catch (err) {
       console.error("Failed to load complaints", err);
     } finally {
@@ -62,6 +80,11 @@ export default function Dashboard() {
     clearToken();
     clearUser();
     navigate("/login", { replace: true });
+  }
+
+  function goToComplaints(status) {
+    const qs = status ? `?status=${encodeURIComponent(status)}` : "";
+    navigate(`/complaints${qs}`);
   }
 
   const getStatusColor = (status) => {
@@ -86,7 +109,16 @@ export default function Dashboard() {
     return colors[priority] || "bg-gray-100 text-gray-700";
   };
 
-  if (!user) return null;
+  if (!user) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="text-center">
+          <div className="inline-block w-8 h-8 border-4 border-violet-600 border-t-transparent rounded-full animate-spin mb-4"></div>
+          <p className="text-sm text-gray-600">Redirecting to login...</p>
+        </div>
+      </div>
+    );
+  }
 
   const displayStatusForRole = (status) => {
     // Hide "COMPLETED" on dashboard for non-officers; show as IN_PROGRESS instead
@@ -95,46 +127,79 @@ export default function Dashboard() {
   };
 
   const stats = (() => {
-    const terminal = ["RESOLVED", "WITHDRAWN", "REJECTED"];
-    if (user.role === "OFFICER") {
+    // Admin: Total, Pending, Resolved (reduced); provide optional avg as info
+    if (metrics && user.role === "ADMIN") {
       return [
         {
-          label: "Assigned",
-          // Count only active assignments (exclude terminal states)
-          value: allComplaints.filter((c) => !terminal.includes(c.status))
-            .length,
+          label: "Total Complaints",
+          value: metrics.total,
           icon: FileText,
           color: "text-violet-600",
+          clickStatus: "ALL",
         },
         {
-          label: "Completed",
-          value: allComplaints.filter((c) => c.status === "COMPLETED").length,
+          label: "Pending Complaints",
+          value: metrics.pending,
+          icon: Clock,
+          color: "text-yellow-600",
+          clickStatus: "PENDING",
+        },
+        {
+          label: "Resolved Complaints",
+          value: metrics.resolved,
           icon: AlertCircle,
-          color: "text-indigo-600",
+          color: "text-green-600",
+          clickStatus: "RESOLVED",
         },
       ];
     }
-    // Citizen/Admin
+    if (metrics && user.role === "OFFICER") {
+      return [
+        {
+          label: "Active Assigned",
+          value: metrics.totalAssigned,
+          icon: FileText,
+          color: "text-violet-600",
+          clickStatus: "ASSIGNED",
+        },
+        {
+          label: "Completed",
+          value: metrics.completed,
+          icon: AlertCircle,
+          color: "text-indigo-600",
+          clickStatus: "COMPLETED",
+        },
+        {
+          label: "In Progress",
+          value: metrics.inProgress,
+          icon: AlertCircle,
+          color: "text-blue-600",
+          clickStatus: "IN_PROGRESS",
+        },
+      ];
+    }
+    // Citizen fallback (client-side only)
     return [
       {
-        label: user.role === "ADMIN" ? "Total Complaints" : "Total Complaints",
+        label: "Total Complaints",
         value: allComplaints.length,
         icon: FileText,
         color: "text-violet-600",
+        clickStatus: "ALL",
       },
       {
-        label: "Pending",
+        label: "Pending Complaints",
         value: allComplaints.filter((c) => c.status === "PENDING").length,
         icon: Clock,
         color: "text-yellow-600",
+        clickStatus: "PENDING",
       },
       {
-        label: "In Progress",
-        value: allComplaints.filter(
-          (c) => c.status === "IN_PROGRESS" || c.status === "COMPLETED"
-        ).length,
+        label: "Resolved Complaints",
+        value: allComplaints.filter((c) => c.status === "RESOLVED").length,
         icon: AlertCircle,
-        color: "text-blue-600",
+        color: "text-green-600",
+        clickStatus: "RESOLVED",
       },
     ];
   })();
@@ -143,7 +208,7 @@ export default function Dashboard() {
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
       <header className="bg-white border-b border-gray-200 sticky top-0 z-50 shadow-sm">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="w-full px-3 sm:px-5 md:px-6 lg:px-8 xl:px-10 2xl:px-12">
           <div className="flex justify-between items-center h-16">
             <div className="flex items-center gap-2">
               <div className="w-10 h-10 bg-gradient-to-br from-violet-600 to-purple-600 rounded-lg flex items-center justify-center">
@@ -152,6 +217,14 @@ export default function Dashboard() {
               <h1 className="text-xl font-bold text-gray-900">ResolveIt</h1>
             </div>
             <nav className="flex items-center gap-4">
+              {user.role === "CITIZEN" && (
+                <Link to="/welcome">
+                  <Button variant="ghost" className="gap-2">
+                    <Home className="w-4 h-4" />
+                    Home
+                  </Button>
+                </Link>
+              )}
               <Link to="/dashboard">
                 <Button variant="ghost" className="gap-2">
                   <FileText className="w-4 h-4" />
@@ -178,52 +251,53 @@ export default function Dashboard() {
       </header>
 
       {/* Main Content */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Welcome Card */}
-        <Card className="mb-8 border-0 shadow-md bg-gradient-to-br from-violet-600 to-purple-600 text-white">
-          <CardHeader>
-            <div className="flex items-start justify-between">
-              <div>
-                <CardTitle className="text-3xl mb-2 text-white">
+      <main className="w-full px-3 sm:px-5 md:px-6 lg:px-8 xl:px-10 2xl:px-12 py-6">
+        {/* Welcome Banner (compact) */}
+        <Card className="mb-4 border-0 shadow-md bg-gradient-to-r from-violet-600 to-purple-600 text-white">
+          <CardHeader className="py-4">
+            <div className="flex items-center justify-between">
+              <div className="min-w-0">
+                <CardTitle className="text-2xl truncate text-white">
                   Welcome back, {user.name}!
                 </CardTitle>
-                <CardDescription className="text-violet-100 text-base">
-                  Manage your complaints and track their progress
+                <CardDescription className="text-violet-100 text-sm truncate">
+                  {user.email}
                 </CardDescription>
               </div>
-              <div className="bg-white/20 backdrop-blur-sm rounded-full p-4">
-                <User className="w-8 h-8 text-white" />
+              <div className="bg-white/20 backdrop-blur-sm rounded-full p-2">
+                <User className="w-6 h-6 text-white" />
               </div>
             </div>
           </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
-              <div className="flex items-center gap-2 bg-white/10 backdrop-blur-sm rounded-lg px-4 py-2">
-                <Mail className="w-4 h-4" />
-                <span>{user.email}</span>
-              </div>
-              <div className="flex items-center gap-2 bg-white/10 backdrop-blur-sm rounded-lg px-4 py-2">
-                <Shield className="w-4 h-4" />
-                <span className="font-medium">{user.role}</span>
-              </div>
-            </div>
-          </CardContent>
         </Card>
 
         {/* Stats */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+        <div
+          className={`grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 mb-6`}
+        >
           {stats.map((stat, index) => (
             <Card
               key={index}
-              className="border-0 shadow-md hover:shadow-lg transition-shadow"
+              onClick={() =>
+                stat.clickStatus && goToComplaints(stat.clickStatus)
+              }
+              className="border-0 shadow-md hover:shadow-lg transition-shadow cursor-pointer"
+              role="button"
+              tabIndex={0}
+              onKeyDown={(e) => {
+                if ((e.key === "Enter" || e.key === " ") && stat.clickStatus) {
+                  e.preventDefault();
+                  goToComplaints(stat.clickStatus);
+                }
+              }}
             >
-              <CardContent className="p-6">
+              <CardContent className="p-4">
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-sm font-medium text-gray-600">
                       {stat.label}
                     </p>
-                    <p className="text-3xl font-bold text-gray-900 mt-2">
+                    <p className="text-2xl font-bold text-gray-900 mt-2">
                       {stat.value}
                     </p>
                   </div>
@@ -234,41 +308,74 @@ export default function Dashboard() {
               </CardContent>
             </Card>
           ))}
+          {/* Avg Resolution card removed for admin as requested */}
         </div>
 
-        {/* Quick Actions */}
-        <div className="flex flex-wrap gap-4 mb-8">
-          {user.role === "CITIZEN" && (
-            <Link to="/complaints/new">
-              <Button size="lg" className="gap-2">
-                <Plus className="w-5 h-5" />
-                Submit New Complaint
-              </Button>
-            </Link>
-          )}
-          <Link to="/complaints">
-            <Button size="lg" variant="outline" className="gap-2">
-              <List className="w-5 h-5" />
-              {user.role === "OFFICER"
-                ? "View Assigned Complaints"
-                : "View All Complaints"}
-            </Button>
-          </Link>
-        </div>
+        {/* Quick Actions removed; moved into Recent Complaints header */}
+
+        {/* Charts */}
+        {user.role !== "CITIZEN" && (
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+            <Card className="border-0 shadow-md">
+              <CardHeader>
+                <CardTitle className="text-lg">Status Distribution</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <StatusDistributionChart complaints={allComplaints} />
+              </CardContent>
+            </Card>
+            <Card className="border-0 shadow-md">
+              <CardHeader>
+                <CardTitle className="text-lg">By Category</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <CategoryBarChart complaints={allComplaints} />
+              </CardContent>
+            </Card>
+            <Card className="border-0 shadow-md">
+              <CardHeader>
+                <CardTitle className="text-lg">By Priority</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <PriorityBarChart complaints={allComplaints} />
+              </CardContent>
+            </Card>
+          </div>
+        )}
 
         {/* Recent Complaints */}
         <Card className="border-0 shadow-md">
-          <CardHeader>
-            <CardTitle className="text-2xl">Recent Complaints</CardTitle>
-            <CardDescription>
-              {user.role === "OFFICER"
-                ? "Recently assigned to you"
-                : user.role === "ADMIN"
-                ? "Latest complaints"
-                : "Your most recent complaint submissions"}
-            </CardDescription>
+          <CardHeader className="pb-0">
+            <div className="flex items-center justify-between gap-4">
+              <div className="min-w-0">
+                <CardTitle className="text-2xl">Recent Complaints</CardTitle>
+                <CardDescription>
+                  {user.role === "OFFICER"
+                    ? "Recently assigned to you"
+                    : user.role === "ADMIN"
+                    ? "Latest complaints"
+                    : "Your most recent complaint submissions"}
+                </CardDescription>
+              </div>
+              <div className="shrink-0 flex gap-2">
+                {user.role === "CITIZEN" && (
+                  <Link to="/complaints/new">
+                    <Button className="gap-2">
+                      <Plus className="w-4 h-4" />
+                      New Complaint
+                    </Button>
+                  </Link>
+                )}
+                <Link to="/complaints">
+                  <Button variant="outline" className="gap-2">
+                    <List className="w-4 h-4" />
+                    {user.role === "OFFICER" ? "View Assigned" : "View All"}
+                  </Button>
+                </Link>
+              </div>
+            </div>
           </CardHeader>
-          <CardContent>
+          <CardContent className="pt-4">
             {loading ? (
               <div className="text-center py-12">
                 <div className="inline-block w-8 h-8 border-4 border-violet-600 border-t-transparent rounded-full animate-spin"></div>
@@ -294,75 +401,85 @@ export default function Dashboard() {
               </div>
             ) : (
               <div className="overflow-x-auto">
-                <table className="w-full">
-                  <thead>
-                    <tr className="border-b border-gray-200">
-                      <th className="text-left py-3 px-4 font-semibold text-sm text-gray-600">
-                        ID
-                      </th>
-                      <th className="text-left py-3 px-4 font-semibold text-sm text-gray-600">
-                        Title
-                      </th>
-                      <th className="text-left py-3 px-4 font-semibold text-sm text-gray-600">
-                        Category
-                      </th>
-                      <th className="text-left py-3 px-4 font-semibold text-sm text-gray-600">
-                        Priority
-                      </th>
-                      <th className="text-left py-3 px-4 font-semibold text-sm text-gray-600">
-                        Status
-                      </th>
-                      <th className="text-left py-3 px-4 font-semibold text-sm text-gray-600">
-                        Created
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {complaints.map((complaint) => (
-                      <tr
-                        key={complaint.id}
-                        onClick={() => navigate(`/complaints/${complaint.id}`)}
-                        className="border-b border-gray-100 hover:bg-gray-50 cursor-pointer transition-colors"
-                      >
-                        <td className="py-4 px-4 text-sm font-medium text-gray-900">
-                          #{complaint.id}
-                        </td>
-                        <td className="py-4 px-4 text-sm text-gray-900 font-medium">
-                          {complaint.title}
-                        </td>
-                        <td className="py-4 px-4 text-sm text-gray-600">
-                          {complaint.category}
-                        </td>
-                        <td className="py-4 px-4">
-                          <Badge
-                            className={
-                              getPriorityColor(complaint.priority) + " border"
-                            }
-                          >
-                            {complaint.priority}
-                          </Badge>
-                        </td>
-                        <td className="py-4 px-4">
-                          <Badge
-                            className={
-                              getStatusColor(
-                                displayStatusForRole(complaint.status)
-                              ) + " border"
-                            }
-                          >
-                            {displayStatusForRole(complaint.status).replace(
-                              "_",
-                              " "
-                            )}
-                          </Badge>
-                        </td>
-                        <td className="py-4 px-4 text-sm text-gray-600">
-                          {new Date(complaint.createdAt).toLocaleDateString()}
-                        </td>
+                <div className="max-h-[420px] overflow-y-auto border rounded-md">
+                  <table className="w-full">
+                    <thead>
+                      <tr className="border-b border-gray-200 sticky top-0 bg-white z-10">
+                        <th className="text-left py-3 px-4 font-semibold text-sm text-gray-600">
+                          ID
+                        </th>
+                        <th className="text-left py-3 px-4 font-semibold text-sm text-gray-600">
+                          Tracking
+                        </th>
+                        <th className="text-left py-3 px-4 font-semibold text-sm text-gray-600">
+                          Title
+                        </th>
+                        <th className="text-left py-3 px-4 font-semibold text-sm text-gray-600">
+                          Category
+                        </th>
+                        <th className="text-left py-3 px-4 font-semibold text-sm text-gray-600">
+                          Priority
+                        </th>
+                        <th className="text-left py-3 px-4 font-semibold text-sm text-gray-600">
+                          Status
+                        </th>
+                        <th className="text-left py-3 px-4 font-semibold text-sm text-gray-600">
+                          Created
+                        </th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
+                    </thead>
+                    <tbody>
+                      {complaints.map((complaint) => (
+                        <tr
+                          key={complaint.id}
+                          onClick={() =>
+                            navigate(`/complaints/${complaint.id}`)
+                          }
+                          className="border-b border-gray-100 hover:bg-gray-50/80 hover:shadow-sm cursor-pointer transition-colors"
+                        >
+                          <td className="py-4 px-4 text-sm font-medium text-gray-900">
+                            #{complaint.id}
+                          </td>
+                          <td className="py-4 px-4 text-xs text-gray-600 font-mono">
+                            {complaint.trackingId}
+                          </td>
+                          <td className="py-4 px-4 text-sm text-gray-900 font-medium max-w-[160px] truncate">
+                            {complaint.title}
+                          </td>
+                          <td className="py-4 px-4 text-sm text-gray-600">
+                            {complaint.category}
+                          </td>
+                          <td className="py-4 px-4">
+                            <Badge
+                              className={
+                                getPriorityColor(complaint.priority) + " border"
+                              }
+                            >
+                              {complaint.priority}
+                            </Badge>
+                          </td>
+                          <td className="py-4 px-4">
+                            <Badge
+                              className={
+                                getStatusColor(
+                                  displayStatusForRole(complaint.status)
+                                ) + " border"
+                              }
+                            >
+                              {displayStatusForRole(complaint.status).replace(
+                                "_",
+                                " "
+                              )}
+                            </Badge>
+                          </td>
+                          <td className="py-4 px-4 text-sm text-gray-600">
+                            {new Date(complaint.createdAt).toLocaleDateString()}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
               </div>
             )}
           </CardContent>

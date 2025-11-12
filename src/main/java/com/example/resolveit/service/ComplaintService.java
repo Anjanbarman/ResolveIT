@@ -16,6 +16,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
 import java.time.LocalDateTime;
+import java.time.LocalDate;
 import java.util.List;
 import java.util.UUID;
 
@@ -40,6 +41,9 @@ public class ComplaintService {
                 .priority(priority != null ? priority : ComplaintPriority.MEDIUM)
                 .status(ComplaintStatus.PENDING)
                 .build();
+
+        // Generate unique tracking ID
+        complaint.setTrackingId(generateTrackingId());
 
         if (authentication != null && authentication.isAuthenticated()
                 && !"anonymousUser".equals(authentication.getName())) {
@@ -83,7 +87,8 @@ public class ComplaintService {
     }
 
     public Complaint getComplaintById(Long id, Authentication authentication) {
-        Complaint complaint = complaintRepository.findById(id)
+        Long safeId = java.util.Objects.requireNonNull(id, "id cannot be null");
+        Complaint complaint = complaintRepository.findById(safeId)
                 .orElseThrow(() -> new IllegalArgumentException("Complaint not found"));
 
         String email = authentication.getName();
@@ -101,13 +106,14 @@ public class ComplaintService {
     public Complaint updateComplaint(Long id, String title, String description,
             ComplaintCategory category, ComplaintPriority priority,
             Authentication authentication) {
-        Complaint complaint = complaintRepository.findById(id)
+        Long safeId = java.util.Objects.requireNonNull(id, "id cannot be null");
+        Complaint complaint = complaintRepository.findById(safeId)
                 .orElseThrow(() -> new IllegalArgumentException("Complaint not found"));
 
         String email = authentication.getName();
         User user = userRepository.findByEmail(email).orElseThrow();
 
-        if (complaint.getReporter() == null || !complaint.getReporter().getId().equals(user.getId())) {
+        if (complaint.getReporter() != null && !complaint.getReporter().getId().equals(user.getId())) {
             throw new IllegalArgumentException("Access denied");
         }
 
@@ -124,7 +130,8 @@ public class ComplaintService {
     }
 
     public void withdrawComplaint(Long id, Authentication authentication) {
-        Complaint complaint = complaintRepository.findById(id)
+        Long safeId = java.util.Objects.requireNonNull(id, "id cannot be null");
+        Complaint complaint = complaintRepository.findById(safeId)
                 .orElseThrow(() -> new IllegalArgumentException("Complaint not found"));
 
         String email = authentication.getName();
@@ -143,7 +150,8 @@ public class ComplaintService {
     }
 
     public Complaint updateStatus(Long id, ComplaintStatus status, String adminNotes, Authentication authentication) {
-        Complaint complaint = complaintRepository.findById(id)
+        Long safeId = java.util.Objects.requireNonNull(id, "id cannot be null");
+        Complaint complaint = complaintRepository.findById(safeId)
                 .orElseThrow(() -> new IllegalArgumentException("Complaint not found"));
 
         String email = authentication.getName();
@@ -177,6 +185,10 @@ public class ComplaintService {
                 complaint.setStatus(ComplaintStatus.IN_PROGRESS);
             } else if (status == ComplaintStatus.WITHDRAWN) {
                 complaint.setStatus(ComplaintStatus.WITHDRAWN);
+            } else if (status == ComplaintStatus.UNRESOLVED) {
+                complaint.setStatus(ComplaintStatus.UNRESOLVED);
+            } else if (status == ComplaintStatus.REOPENED) {
+                complaint.setStatus(ComplaintStatus.REOPENED);
             } else if (status == ComplaintStatus.COMPLETED) {
                 // Admin should not directly set COMPLETED
                 throw new IllegalArgumentException("Admins cannot set status to COMPLETED");
@@ -195,8 +207,10 @@ public class ComplaintService {
         return complaintRepository.save(complaint);
     }
 
-    public Complaint assignOfficer(Long complaintId, Long officerId, Authentication authentication) {
-        Complaint complaint = complaintRepository.findById(complaintId)
+    public Complaint assignOfficer(Long complaintId, Long officerId, LocalDate targetResolutionDate,
+            Authentication authentication) {
+        Long safeComplaintId = java.util.Objects.requireNonNull(complaintId, "complaintId cannot be null");
+        Complaint complaint = complaintRepository.findById(safeComplaintId)
                 .orElseThrow(() -> new IllegalArgumentException("Complaint not found"));
 
         String email = authentication.getName();
@@ -206,7 +220,8 @@ public class ComplaintService {
             throw new IllegalArgumentException("Only admins can assign officers");
         }
 
-        User officer = userRepository.findById(officerId)
+        Long safeOfficerId = java.util.Objects.requireNonNull(officerId, "officerId cannot be null");
+        User officer = userRepository.findById(safeOfficerId)
                 .orElseThrow(() -> new IllegalArgumentException("Officer not found"));
 
         if (officer.getRole() != UserRole.OFFICER) {
@@ -214,16 +229,32 @@ public class ComplaintService {
         }
 
         complaint.setAssignedOfficer(officer);
-        // Move to IN_PROGRESS upon assignment if not already
-        // completed/resolved/withdrawn/rejected
-        if (complaint.getStatus() == ComplaintStatus.PENDING) {
+        complaint.setTargetResolutionDate(targetResolutionDate);
+        if (complaint.getStatus() == ComplaintStatus.PENDING
+                || complaint.getStatus() == ComplaintStatus.UNRESOLVED
+                || complaint.getStatus() == ComplaintStatus.REOPENED) {
             complaint.setStatus(ComplaintStatus.IN_PROGRESS);
         }
         return complaintRepository.save(complaint);
     }
 
+    public Complaint updateComplaintDeadline(Long complaintId, LocalDate targetResolutionDate,
+            Authentication authentication) {
+        String email = authentication.getName();
+        User admin = userRepository.findByEmail(email).orElseThrow();
+        if (admin.getRole() != UserRole.ADMIN) {
+            throw new IllegalArgumentException("Only admins can update deadlines");
+        }
+        Long safeComplaintId = java.util.Objects.requireNonNull(complaintId, "complaintId cannot be null");
+        Complaint complaint = complaintRepository.findById(safeComplaintId)
+                .orElseThrow(() -> new IllegalArgumentException("Complaint not found"));
+        complaint.setTargetResolutionDate(targetResolutionDate);
+        return complaintRepository.save(complaint);
+    }
+
     public Complaint unassignOfficer(Long complaintId, Authentication authentication) {
-        Complaint complaint = complaintRepository.findById(complaintId)
+        Long safeComplaintId = java.util.Objects.requireNonNull(complaintId, "complaintId cannot be null");
+        Complaint complaint = complaintRepository.findById(safeComplaintId)
                 .orElseThrow(() -> new IllegalArgumentException("Complaint not found"));
 
         String email = authentication.getName();
@@ -249,7 +280,8 @@ public class ComplaintService {
     }
 
     public InternalNote addInternalNote(Long complaintId, String content, Authentication authentication) {
-        Complaint complaint = complaintRepository.findById(complaintId)
+        Long safeComplaintId = java.util.Objects.requireNonNull(complaintId, "complaintId cannot be null");
+        Complaint complaint = complaintRepository.findById(safeComplaintId)
                 .orElseThrow(() -> new IllegalArgumentException("Complaint not found"));
 
         String email = authentication.getName();
@@ -265,7 +297,9 @@ public class ComplaintService {
                 .content(content)
                 .build();
 
-        return internalNoteRepository.save(note);
+        @SuppressWarnings("null")
+        InternalNote saved = internalNoteRepository.save(note);
+        return saved;
     }
 
     public List<InternalNote> getInternalNotes(Long complaintId, Authentication authentication) {
@@ -283,7 +317,8 @@ public class ComplaintService {
     }
 
     public PublicUpdate addPublicUpdate(Long complaintId, String content, Authentication authentication) {
-        Complaint complaint = complaintRepository.findById(complaintId)
+        Long safeComplaintId = java.util.Objects.requireNonNull(complaintId, "complaintId cannot be null");
+        Complaint complaint = complaintRepository.findById(safeComplaintId)
                 .orElseThrow(() -> new IllegalArgumentException("Complaint not found"));
 
         String email = authentication.getName();
@@ -300,11 +335,14 @@ public class ComplaintService {
                 .content(content)
                 .build();
 
-        return publicUpdateRepository.save(update);
+        @SuppressWarnings("null")
+        PublicUpdate saved = publicUpdateRepository.save(update);
+        return saved;
     }
 
     public List<PublicUpdate> getPublicUpdates(Long complaintId, Authentication authentication) {
-        Complaint complaint = complaintRepository.findById(complaintId)
+        Long safeComplaintId = java.util.Objects.requireNonNull(complaintId, "complaintId cannot be null");
+        Complaint complaint = complaintRepository.findById(safeComplaintId)
                 .orElseThrow(() -> new IllegalArgumentException("Complaint not found"));
 
         String email = authentication.getName();
@@ -338,6 +376,142 @@ public class ComplaintService {
         }
 
         return complaintRepository.findByAssignedOfficerOrderByCreatedAtDesc(officer);
+    }
+
+    // Citizen reopen
+    public Complaint reopenComplaint(Long id, Authentication authentication) {
+        Long safeId = java.util.Objects.requireNonNull(id, "id cannot be null");
+        Complaint complaint = complaintRepository.findById(safeId)
+                .orElseThrow(() -> new IllegalArgumentException("Complaint not found"));
+        String email = authentication.getName();
+        User user = userRepository.findByEmail(email).orElseThrow();
+        if (user.getRole() != UserRole.CITIZEN) {
+            throw new IllegalArgumentException("Only citizens can reopen complaints");
+        }
+        // Allow reopening if:
+        // 1. Complaint has a reporter and it's the same user, OR
+        // 2. Complaint has no reporter (anonymous submission) – any authenticated
+        // citizen may reopen using tracking link
+        if (complaint.getReporter() != null && !complaint.getReporter().getId().equals(user.getId())) {
+            throw new IllegalArgumentException("Access denied");
+        }
+        if (complaint.getStatus() != ComplaintStatus.RESOLVED) {
+            throw new IllegalArgumentException("Only resolved complaints can be reopened");
+        }
+        complaint.setStatus(ComplaintStatus.REOPENED);
+        complaint.setReopenedAt(LocalDateTime.now());
+        complaint.setAssignedOfficer(null);
+        return complaintRepository.save(complaint);
+    }
+
+    // In-memory search for simplicity
+    public List<Complaint> searchComplaints(String trackingId, String keyword, ComplaintCategory category,
+            ComplaintPriority priority, ComplaintStatus status, LocalDate fromDate, LocalDate toDate,
+            Authentication authentication) {
+        List<Complaint> base = getAllComplaints(authentication);
+        return base.stream().filter(c -> {
+            if (trackingId != null && !trackingId.isEmpty() && !c.getTrackingId().equalsIgnoreCase(trackingId))
+                return false;
+            if (keyword != null && !keyword.isEmpty()) {
+                String kw = keyword.toLowerCase();
+                if (!(c.getTitle().toLowerCase().contains(kw) || c.getDescription().toLowerCase().contains(kw)))
+                    return false;
+            }
+            if (category != null && c.getCategory() != category)
+                return false;
+            if (priority != null && c.getPriority() != priority)
+                return false;
+            if (status != null) {
+                if (status == ComplaintStatus.IN_PROGRESS) {
+                    if (!(c.getStatus() == ComplaintStatus.IN_PROGRESS || c.getStatus() == ComplaintStatus.COMPLETED))
+                        return false;
+                } else if (c.getStatus() != status)
+                    return false;
+            }
+            if (fromDate != null && c.getCreatedAt().toLocalDate().isBefore(fromDate))
+                return false;
+            if (toDate != null && c.getCreatedAt().toLocalDate().isAfter(toDate))
+                return false;
+            return true;
+        }).toList();
+    }
+
+    // Metrics (basic)
+    public DashboardMetrics getAdminMetrics(Authentication authentication) {
+        String email = authentication.getName();
+        User admin = userRepository.findByEmail(email).orElseThrow();
+        if (admin.getRole() != UserRole.ADMIN)
+            throw new IllegalArgumentException("Access denied");
+        List<Complaint> all = complaintRepository.findAll();
+        long total = all.size();
+        long resolved = all.stream().filter(c -> c.getStatus() == ComplaintStatus.RESOLVED).count();
+        long pending = all.stream().filter(c -> c.getStatus() == ComplaintStatus.PENDING).count();
+        long inProgress = all.stream()
+                .filter(c -> c.getStatus() == ComplaintStatus.IN_PROGRESS || c.getStatus() == ComplaintStatus.COMPLETED)
+                .count();
+        long unresolved = all.stream().filter(c -> c.getStatus() == ComplaintStatus.UNRESOLVED).count();
+        double avgHours = all.stream()
+                .filter(c -> c.getStatus() == ComplaintStatus.RESOLVED && c.getResolvedAt() != null)
+                .mapToLong(c -> java.time.Duration.between(c.getCreatedAt(), c.getResolvedAt()).toHours()).average()
+                .orElse(0);
+        return new DashboardMetrics(total, resolved, pending, inProgress, unresolved, avgHours);
+    }
+
+    public DashboardMetrics getOfficerMetrics(Authentication authentication) {
+        String email = authentication.getName();
+        User officer = userRepository.findByEmail(email).orElseThrow();
+        if (officer.getRole() != UserRole.OFFICER)
+            throw new IllegalArgumentException("Access denied");
+        List<Complaint> assigned = complaintRepository.findByAssignedOfficerOrderByCreatedAtDesc(officer);
+        long totalActive = assigned
+                .stream().filter(c -> c.getStatus() != ComplaintStatus.RESOLVED
+                        && c.getStatus() != ComplaintStatus.REJECTED && c.getStatus() != ComplaintStatus.WITHDRAWN)
+                .count();
+        long completed = assigned.stream().filter(c -> c.getStatus() == ComplaintStatus.COMPLETED).count();
+        long pending = assigned.stream().filter(c -> c.getStatus() == ComplaintStatus.PENDING).count();
+        long inProgress = assigned.stream()
+                .filter(c -> c.getStatus() == ComplaintStatus.IN_PROGRESS || c.getStatus() == ComplaintStatus.COMPLETED)
+                .count();
+        double avgHours = assigned.stream()
+                .filter(c -> c.getStatus() == ComplaintStatus.RESOLVED && c.getResolvedAt() != null)
+                .mapToLong(c -> java.time.Duration.between(c.getCreatedAt(), c.getResolvedAt()).toHours()).average()
+                .orElse(0);
+        return new DashboardMetrics(totalActive, completed, pending, inProgress, 0, avgHours);
+    }
+
+    public int markOverdueUnresolved() {
+        LocalDate today = LocalDate.now();
+        List<Complaint> all = complaintRepository.findAll();
+        int changed = 0;
+        for (Complaint c : all) {
+            if (c.getTargetResolutionDate() != null && c.getTargetResolutionDate().isBefore(today)
+                    && c.getStatus() != ComplaintStatus.RESOLVED
+                    && c.getStatus() != ComplaintStatus.REJECTED
+                    && c.getStatus() != ComplaintStatus.WITHDRAWN
+                    && c.getStatus() != ComplaintStatus.UNRESOLVED) {
+                c.setStatus(ComplaintStatus.UNRESOLVED);
+                complaintRepository.save(c);
+                changed++;
+            }
+        }
+        return changed;
+    }
+
+    private String generateTrackingId() {
+        String year = String.valueOf(LocalDate.now().getYear());
+        String rand = UUID.randomUUID().toString().replaceAll("-", "").substring(0, 6).toUpperCase();
+        return "C-" + year + "-" + rand;
+    }
+
+    @lombok.Getter
+    @lombok.AllArgsConstructor
+    public static class DashboardMetrics {
+        private long total;
+        private long resolvedOrCompleted;
+        private long pending;
+        private long inProgress;
+        private long unresolved;
+        private double averageResolutionHours;
     }
 
     private String saveFile(MultipartFile file) throws IOException {

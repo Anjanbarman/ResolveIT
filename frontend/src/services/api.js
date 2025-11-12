@@ -126,8 +126,17 @@ export function saveUser(user) {
 }
 
 export function getUser() {
-  const user = localStorage.getItem("user");
-  return user ? JSON.parse(user) : null;
+  const raw = localStorage.getItem("user");
+  if (!raw) return null;
+  try {
+    return JSON.parse(raw);
+  } catch (e) {
+    // Corrupt data; clear and return null to avoid runtime crashes
+    try {
+      localStorage.removeItem("user");
+    } catch {}
+    return null;
+  }
 }
 
 export function clearUser() {
@@ -146,7 +155,11 @@ export async function getOfficers() {
   return data;
 }
 
-export async function assignOfficer(complaintId, officerId) {
+export async function assignOfficer(
+  complaintId,
+  officerId,
+  targetResolutionDate
+) {
   const token = getToken();
   const res = await fetch(`/api/complaints/${complaintId}/assign`, {
     method: "POST",
@@ -154,7 +167,7 @@ export async function assignOfficer(complaintId, officerId) {
       Authorization: `Bearer ${token}`,
       "Content-Type": "application/json",
     },
-    body: JSON.stringify({ officerId }),
+    body: JSON.stringify({ officerId, targetResolutionDate }),
   });
   const data = await res.json().catch(() => ({}));
   if (!res.ok) {
@@ -243,5 +256,55 @@ export async function getAssignedComplaints() {
   if (!res.ok) {
     throw new Error(data.message || "Failed to fetch assigned complaints");
   }
+  return data;
+}
+
+export async function reopenComplaint(id) {
+  const token = getToken();
+  const res = await fetch(`/api/complaints/${id}/reopen`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    throw new Error(data.message || "Failed to reopen complaint");
+  }
+  return data;
+}
+
+export async function searchComplaints(params = {}) {
+  const token = getToken();
+  const query = new URLSearchParams();
+  Object.entries(params).forEach(([k, v]) => {
+    if (v !== undefined && v !== null && v !== "") query.append(k, v);
+  });
+  const res = await fetch(`/api/complaints/search?${query.toString()}`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    throw new Error(data.message || "Search failed");
+  }
+  return data;
+}
+
+export async function getAdminMetrics() {
+  const token = getToken();
+  const res = await fetch(`/api/complaints/metrics/admin`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.message || "Failed to fetch admin metrics");
+  return data;
+}
+
+export async function getOfficerMetrics() {
+  const token = getToken();
+  const res = await fetch(`/api/complaints/metrics/officer`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok)
+    throw new Error(data.message || "Failed to fetch officer metrics");
   return data;
 }

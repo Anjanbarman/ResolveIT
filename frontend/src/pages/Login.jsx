@@ -4,7 +4,14 @@ import { login, saveToken, saveUser } from "../services/api";
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
 import { Label } from "../components/ui/label";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "../components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "../components/ui/card";
 import { Alert, AlertDescription } from "../components/ui/alert";
 import { AlertCircle, Mail, Lock, FileText } from "lucide-react";
 
@@ -24,7 +31,11 @@ export default function Login() {
       const res = await login(form);
       saveToken(res.token);
       saveUser(res.user);
-      navigate("/dashboard", { replace: true });
+      if (res.user.role === "CITIZEN") {
+        navigate("/welcome", { replace: true });
+      } else {
+        navigate("/dashboard", { replace: true });
+      }
     } catch (err) {
       setError(err.message);
     } finally {
@@ -39,7 +50,9 @@ export default function Login() {
           <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-br from-violet-600 to-purple-600 rounded-2xl mb-4 shadow-lg">
             <FileText className="w-8 h-8 text-white" />
           </div>
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">Welcome Back</h1>
+          <h1 className="text-3xl font-bold text-gray-900 mb-2">
+            Welcome Back
+          </h1>
           <p className="text-gray-600">Sign in to manage your complaints</p>
         </div>
 
@@ -101,7 +114,10 @@ export default function Login() {
           <CardFooter className="flex flex-col space-y-3">
             <div className="text-sm text-center text-gray-600">
               Don't have an account?{" "}
-              <Link to="/signup" className="text-violet-600 hover:text-violet-700 font-medium hover:underline">
+              <Link
+                to="/signup"
+                className="text-violet-600 hover:text-violet-700 font-medium hover:underline"
+              >
                 Sign up
               </Link>
             </div>
