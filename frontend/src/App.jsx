@@ -3,6 +3,7 @@ import "./App.css";
 import Login from "./pages/Login";
 import Signup from "./pages/Signup";
 import Dashboard from "./pages/Dashboard";
+import Welcome from "./pages/Welcome";
 import NewComplaint from "./pages/NewComplaint";
 import ComplaintList from "./pages/ComplaintList";
 import ComplaintDetails from "./pages/ComplaintDetails";
@@ -17,6 +18,7 @@ export default function App() {
         <Route path="/signup" element={<Signup />} />
         <Route path="/anonymous" element={<AnonymousSubmission />} />
         <Route path="/dashboard" element={<Dashboard />} />
+        <Route path="/welcome" element={<Welcome />} />
         <Route path="/complaints" element={<ComplaintList />} />
         <Route path="/complaints/new" element={<NewComplaint />} />
         <Route path="/complaints/:id" element={<ComplaintDetails />} />

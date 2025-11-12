@@ -6,5 +6,7 @@ public enum ComplaintStatus {
     COMPLETED,
     RESOLVED,
     REJECTED,
-    WITHDRAWN
+    WITHDRAWN,
+    UNRESOLVED,
+    REOPENED
 }

@@ -1,11 +1,12 @@
-import { useState, useEffect } from "react";
-import { useNavigate, Link } from "react-router-dom";
+import { useState, useEffect, useRef } from "react";
+import { useNavigate, Link, useLocation } from "react-router-dom";
 import {
   getUser,
   clearToken,
   clearUser,
   getComplaints,
   getAssignedComplaints,
+  searchComplaints,
 } from "../services/api";
 import { Button } from "../components/ui/button";
 import {
@@ -25,22 +26,55 @@ import {
   Clock,
   AlertCircle,
   CheckCircle2,
+  Home,
+  Calendar,
 } from "lucide-react";
 
 export default function ComplaintList() {
   const navigate = useNavigate();
+  const location = useLocation();
   const user = getUser();
   const [complaints, setComplaints] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState("ALL");
+  const [trackingId, setTrackingId] = useState("");
+  const [keyword, setKeyword] = useState("");
+  const [category, setCategory] = useState("");
+  const [priority, setPriority] = useState("");
+  const [fromDate, setFromDate] = useState("");
+  const [toDate, setToDate] = useState("");
+  const fromRef = useRef(null);
+  const toRef = useRef(null);
 
   useEffect(() => {
     if (!user) {
       navigate("/login", { replace: true });
       return;
     }
+    // Initialize filter from query string if provided
+    try {
+      const params = new URLSearchParams(location.search);
+      const status = params.get("status");
+      if (status) {
+        const normalized = status.toUpperCase();
+        setFilter(normalized);
+      }
+    } catch (_) {}
     loadComplaints();
   }, []);
+
+  // Update filter when query changes (e.g., navigating from dashboard)
+  useEffect(() => {
+    try {
+      const params = new URLSearchParams(location.search);
+      const status = params.get("status");
+      if (status) {
+        const normalized = status.toUpperCase();
+        setFilter(normalized);
+      }
+    } catch (_) {}
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [location.search]);
 
   async function loadComplaints() {
     try {
@@ -53,6 +87,25 @@ export default function ComplaintList() {
       console.error("Failed to load complaints", err);
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function handleSearch(e) {
+    e?.preventDefault();
+    try {
+      const params = {
+        trackingId: trackingId || undefined,
+        keyword: keyword || undefined,
+        category: category || undefined,
+        priority: priority || undefined,
+        status: filter !== "ALL" && filter !== "ASSIGNED" ? filter : undefined,
+        from: fromDate || undefined,
+        to: toDate || undefined,
+      };
+      const results = await searchComplaints(params);
+      setComplaints(results);
+    } catch (err) {
+      console.error("Search failed", err);
     }
   }
 
@@ -99,6 +152,8 @@ export default function ComplaintList() {
       RESOLVED: "bg-green-100 text-green-800 border-green-200",
       REJECTED: "bg-red-100 text-red-800 border-red-200",
       WITHDRAWN: "bg-gray-100 text-gray-800 border-gray-200",
+      UNRESOLVED: "bg-orange-100 text-orange-800 border-orange-200",
+      REOPENED: "bg-purple-100 text-purple-800 border-purple-200",
     };
     return colors[status] || "bg-gray-100 text-gray-800";
   };
@@ -108,7 +163,6 @@ export default function ComplaintList() {
       LOW: "bg-gray-100 text-gray-700 border-gray-200",
       MEDIUM: "bg-blue-100 text-blue-700 border-blue-200",
       HIGH: "bg-orange-100 text-orange-700 border-orange-200",
-      URGENT: "bg-red-100 text-red-700 border-red-200",
     };
     return colors[priority] || "bg-gray-100 text-gray-700";
   };
@@ -136,7 +190,7 @@ export default function ComplaintList() {
   return (
     <div className="min-h-screen bg-gray-50">
       <header className="bg-white border-b border-gray-200 sticky top-0 z-50 shadow-sm">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="w-full px-3 sm:px-5 md:px-6 lg:px-8 xl:px-10 2xl:px-12">
           <div className="flex justify-between items-center h-16">
             <div className="flex items-center gap-2">
               <div className="w-10 h-10 bg-gradient-to-br from-violet-600 to-purple-600 rounded-lg flex items-center justify-center">
@@ -145,6 +199,14 @@ export default function ComplaintList() {
               <h1 className="text-xl font-bold text-gray-900">ResolveIt</h1>
             </div>
             <nav className="flex items-center gap-4">
+              {user.role === "CITIZEN" && (
+                <Link to="/welcome">
+                  <Button variant="ghost" className="gap-2">
+                    <Home className="w-4 h-4" />
+                    Home
+                  </Button>
+                </Link>
+              )}
               <Link to="/dashboard">
                 <Button variant="ghost" className="gap-2">
                   <FileText className="w-4 h-4" />
@@ -170,10 +232,10 @@ export default function ComplaintList() {
         </div>
       </header>
 
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="flex justify-between items-center mb-8">
+      <main className="w-full px-3 sm:px-5 md:px-6 lg:px-8 xl:px-10 2xl:px-12 py-6">
+        <div className="flex justify-between items-center mb-4">
           <div>
-            <h1 className="text-3xl font-bold text-gray-900 mb-2">
+            <h1 className="text-2xl font-bold text-gray-900 mb-1.5">
               {user.role === "OFFICER"
                 ? "Assigned Complaints"
                 : "My Complaints"}
@@ -194,8 +256,8 @@ export default function ComplaintList() {
           )}
         </div>
 
-        <Card className="mb-6 border-0 shadow-md">
-          <CardContent className="pt-6">
+        <Card className="mb-4 border-0 shadow-md">
+          <CardContent className="pt-4">
             <div className="flex items-center gap-2 mb-4">
               <Filter className="w-4 h-4 text-gray-600" />
               <span className="text-sm font-medium text-gray-700">
@@ -215,6 +277,114 @@ export default function ComplaintList() {
                 </Button>
               ))}
             </div>
+            <form
+              className="mt-4 flex flex-wrap gap-2.5 items-start"
+              onSubmit={handleSearch}
+            >
+              <input
+                type="text"
+                placeholder="Tracking ID"
+                className="border rounded-md px-3 py-2 text-sm w-[150px] sm:w-[170px]"
+                value={trackingId}
+                onChange={(e) => setTrackingId(e.target.value)}
+              />
+              <input
+                type="text"
+                placeholder="Keyword"
+                className="border rounded-md px-3 py-2 text-sm w-[190px] sm:w-[210px]"
+                value={keyword}
+                onChange={(e) => setKeyword(e.target.value)}
+              />
+              <select
+                className="border rounded-md px-3 py-2 text-sm w-[150px]"
+                value={category}
+                onChange={(e) => setCategory(e.target.value)}
+              >
+                <option value="" disabled hidden>
+                  Category
+                </option>
+                <option value="SANITATION">Sanitation</option>
+                <option value="TRAFFIC">Traffic</option>
+                <option value="WATER">Water</option>
+                <option value="OTHER">Other</option>
+              </select>
+              <select
+                className="border rounded-md px-3 py-2 text-sm w-[130px]"
+                value={priority}
+                onChange={(e) => setPriority(e.target.value)}
+              >
+                <option value="" disabled hidden>
+                  Priority
+                </option>
+                <option value="LOW">Low</option>
+                <option value="MEDIUM">Medium</option>
+                <option value="HIGH">High</option>
+              </select>
+              <div
+                className="relative inline-flex items-center border rounded-md px-2 py-2 text-sm bg-white select-none cursor-pointer min-w-[105px] w-auto"
+                onClick={() =>
+                  fromRef.current?.showPicker
+                    ? fromRef.current.showPicker()
+                    : fromRef.current?.focus()
+                }
+              >
+                <span className="text-gray-600 mr-2">From</span>
+                {fromDate && (
+                  <span className="ml-2 text-gray-700">
+                    {new Date(fromDate).toLocaleDateString()}
+                  </span>
+                )}
+                <Calendar className="w-4 h-4 text-gray-500 ml-auto" />
+                <input
+                  type="date"
+                  ref={fromRef}
+                  className="absolute inset-0 opacity-0 cursor-pointer"
+                  value={fromDate}
+                  onChange={(e) => setFromDate(e.target.value)}
+                />
+              </div>
+              <div
+                className="relative inline-flex items-center border rounded-md px-2 py-2 text-sm bg-white select-none cursor-pointer min-w-[105px] w-auto"
+                onClick={() =>
+                  toRef.current?.showPicker
+                    ? toRef.current.showPicker()
+                    : toRef.current?.focus()
+                }
+              >
+                <span className="text-gray-600 mr-2">To</span>
+                {toDate && (
+                  <span className="ml-2 text-gray-700">
+                    {new Date(toDate).toLocaleDateString()}
+                  </span>
+                )}
+                <Calendar className="w-4 h-4 text-gray-500 ml-auto" />
+                <input
+                  type="date"
+                  ref={toRef}
+                  className="absolute inset-0 opacity-0 cursor-pointer"
+                  value={toDate}
+                  onChange={(e) => setToDate(e.target.value)}
+                />
+              </div>
+              <div className="flex gap-2 w-full md:w-auto">
+                <Button type="submit">Apply</Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => {
+                    setTrackingId("");
+                    setKeyword("");
+                    setCategory("");
+                    setPriority("");
+                    setFromDate("");
+                    setToDate("");
+                    loadComplaints();
+                  }}
+                >
+                  Reset
+                </Button>
+              </div>
+            </form>
           </CardContent>
         </Card>
 
@@ -250,29 +420,32 @@ export default function ComplaintList() {
                 )}
               </div>
             ) : (
-              <div className="overflow-x-auto">
-                <table className="w-full">
+              <div className="overflow-x-auto rounded-md border border-gray-200">
+                <table className="w-full text-sm">
                   <thead>
-                    <tr className="border-b border-gray-200">
-                      <th className="text-left py-3 px-4 font-semibold text-sm text-gray-600">
+                    <tr className="border-b border-gray-200 bg-gray-50/50">
+                      <th className="text-left py-2.5 px-3 font-semibold text-gray-600">
                         ID
                       </th>
-                      <th className="text-left py-3 px-4 font-semibold text-sm text-gray-600">
+                      <th className="text-left py-2.5 px-3 font-semibold text-gray-600">
+                        Tracking
+                      </th>
+                      <th className="text-left py-2.5 px-3 font-semibold text-gray-600">
                         Title
                       </th>
-                      <th className="text-left py-3 px-4 font-semibold text-sm text-gray-600">
+                      <th className="text-left py-2.5 px-3 font-semibold text-gray-600">
                         Category
                       </th>
-                      <th className="text-left py-3 px-4 font-semibold text-sm text-gray-600">
+                      <th className="text-left py-2.5 px-3 font-semibold text-gray-600">
                         Priority
                       </th>
-                      <th className="text-left py-3 px-4 font-semibold text-sm text-gray-600">
+                      <th className="text-left py-2.5 px-3 font-semibold text-gray-600">
                         Status
                       </th>
-                      <th className="text-left py-3 px-4 font-semibold text-sm text-gray-600">
+                      <th className="text-left py-2.5 px-3 font-semibold text-gray-600">
                         Created
                       </th>
-                      <th className="text-left py-3 px-4 font-semibold text-sm text-gray-600">
+                      <th className="text-left py-2.5 px-3 font-semibold text-gray-600">
                         Actions
                       </th>
                     </tr>
@@ -281,18 +454,21 @@ export default function ComplaintList() {
                     {filteredComplaints.map((complaint) => (
                       <tr
                         key={complaint.id}
-                        className="border-b border-gray-100 hover:bg-gray-50 transition-colors"
+                        className="border-b border-gray-100 hover:bg-gray-50/80 transition-colors"
                       >
-                        <td className="py-4 px-4 text-sm font-medium text-gray-900">
+                        <td className="py-2.5 px-3 font-medium text-gray-900">
                           #{complaint.id}
                         </td>
-                        <td className="py-4 px-4 text-sm text-gray-900 font-medium">
+                        <td className="py-2.5 px-3 text-gray-900 font-medium">
+                          {complaint.trackingId}
+                        </td>
+                        <td className="py-2.5 px-3 text-gray-900 font-medium">
                           {complaint.title}
                         </td>
-                        <td className="py-4 px-4 text-sm text-gray-600">
+                        <td className="py-2.5 px-3 text-gray-600">
                           {complaint.category}
                         </td>
-                        <td className="py-4 px-4">
+                        <td className="py-2.5 px-3">
                           <Badge
                             className={
                               getPriorityColor(complaint.priority) + " border"
@@ -301,7 +477,7 @@ export default function ComplaintList() {
                             {complaint.priority}
                           </Badge>
                         </td>
-                        <td className="py-4 px-4">
+                        <td className="py-2.5 px-3">
                           <Badge
                             className={
                               getStatusColor(
@@ -321,10 +497,10 @@ export default function ComplaintList() {
                             ).replace("_", " ")}
                           </Badge>
                         </td>
-                        <td className="py-4 px-4 text-sm text-gray-600">
+                        <td className="py-2.5 px-3 text-gray-600">
                           {new Date(complaint.createdAt).toLocaleDateString()}
                         </td>
-                        <td className="py-4 px-4">
+                        <td className="py-2.5 px-3">
                           <Link to={`/complaints/${complaint.id}`}>
                             <Button variant="ghost" size="sm" className="gap-2">
                               <Eye className="w-4 h-4" />

@@ -22,6 +22,7 @@ public class AuthService {
     private final AuthenticationManager authenticationManager;
     private final JwtTokenProvider jwtTokenProvider;
 
+    @SuppressWarnings("null")
     public User signup(String name, String email, String rawPassword, UserRole role) {
         if (userRepository.existsByEmail(email)) {
             throw new IllegalArgumentException("Email already in use");
@@ -38,8 +39,7 @@ public class AuthService {
     public Map<String, Object> login(String email, String password) {
         try {
             authenticationManager.authenticate(
-                    new UsernamePasswordAuthenticationToken(email, password)
-            );
+                    new UsernamePasswordAuthenticationToken(email, password));
         } catch (Exception e) {
             throw new BadCredentialsException("Invalid credentials");
         }
@@ -51,8 +51,6 @@ public class AuthService {
                         "id", user.getId(),
                         "name", user.getName(),
                         "email", user.getEmail(),
-                        "role", user.getRole().toString()
-                )
-        );
+                        "role", user.getRole().toString()));
     }
 }
