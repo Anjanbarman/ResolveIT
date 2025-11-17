@@ -94,13 +94,25 @@ public class ComplaintService {
         String email = authentication.getName();
         User user = userRepository.findByEmail(email).orElseThrow();
 
-        if (user.getRole() != UserRole.ADMIN && user.getRole() != UserRole.OFFICER) {
+        // Admin can view any complaint
+        if (user.getRole() == UserRole.ADMIN) {
+            return complaint;
+        }
+
+        // Officer can view any complaint (especially those assigned to them)
+        if (user.getRole() == UserRole.OFFICER) {
+            return complaint;
+        }
+
+        // Citizen can only view their own complaints
+        if (user.getRole() == UserRole.CITIZEN) {
             if (complaint.getReporter() == null || !complaint.getReporter().getId().equals(user.getId())) {
                 throw new IllegalArgumentException("Access denied");
             }
+            return complaint;
         }
 
-        return complaint;
+        throw new IllegalArgumentException("Access denied");
     }
 
     public Complaint updateComplaint(Long id, String title, String description,

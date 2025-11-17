@@ -257,20 +257,21 @@ export default function ComplaintList() {
         </div>
 
         <Card className="mb-4 border-0 shadow-md">
-          <CardContent className="pt-4">
-            <div className="flex items-center gap-2 mb-4">
+          <CardContent className="pt-4 pb-4">
+            <div className="flex items-center gap-2 mb-3">
               <Filter className="w-4 h-4 text-gray-600" />
               <span className="text-sm font-medium text-gray-700">
                 Filter by Status
               </span>
             </div>
-            <div className="flex flex-wrap gap-2">
+            <div className="inline-flex flex-wrap gap-2 mb-4">
               {filterButtons.map((btn) => (
                 <Button
                   key={btn.value}
                   variant={filter === btn.value ? "default" : "outline"}
                   onClick={() => setFilter(btn.value)}
-                  className="gap-2"
+                  className="gap-2 h-9"
+                  size="sm"
                 >
                   <btn.icon className="w-4 h-4" />
                   {btn.label}
@@ -278,63 +279,61 @@ export default function ComplaintList() {
               ))}
             </div>
             <form
-              className="mt-4 flex flex-wrap gap-2.5 items-start"
+              className="flex flex-wrap gap-2 items-center"
               onSubmit={handleSearch}
             >
               <input
                 type="text"
                 placeholder="Tracking ID"
-                className="border rounded-md px-3 py-2 text-sm w-[150px] sm:w-[170px]"
+                className="border rounded-md px-3 py-1.5 text-sm h-9 w-[145px] focus:outline-none focus:ring-2 focus:ring-violet-500"
                 value={trackingId}
                 onChange={(e) => setTrackingId(e.target.value)}
               />
               <input
                 type="text"
                 placeholder="Keyword"
-                className="border rounded-md px-3 py-2 text-sm w-[190px] sm:w-[210px]"
+                className="border rounded-md px-3 py-1.5 text-sm h-9 w-[160px] focus:outline-none focus:ring-2 focus:ring-violet-500"
                 value={keyword}
                 onChange={(e) => setKeyword(e.target.value)}
               />
               <select
-                className="border rounded-md px-3 py-2 text-sm w-[150px]"
+                className="border rounded-md px-3 py-1.5 text-sm h-9 w-[130px] focus:outline-none focus:ring-2 focus:ring-violet-500"
                 value={category}
                 onChange={(e) => setCategory(e.target.value)}
               >
-                <option value="" disabled hidden>
-                  Category
-                </option>
+                <option value="">Category</option>
                 <option value="SANITATION">Sanitation</option>
                 <option value="TRAFFIC">Traffic</option>
                 <option value="WATER">Water</option>
                 <option value="OTHER">Other</option>
               </select>
               <select
-                className="border rounded-md px-3 py-2 text-sm w-[130px]"
+                className="border rounded-md px-3 py-1.5 text-sm h-9 w-[115px] focus:outline-none focus:ring-2 focus:ring-violet-500"
                 value={priority}
                 onChange={(e) => setPriority(e.target.value)}
               >
-                <option value="" disabled hidden>
-                  Priority
-                </option>
+                <option value="">Priority</option>
                 <option value="LOW">Low</option>
                 <option value="MEDIUM">Medium</option>
                 <option value="HIGH">High</option>
               </select>
               <div
-                className="relative inline-flex items-center border rounded-md px-2 py-2 text-sm bg-white select-none cursor-pointer min-w-[105px] w-auto"
+                className="relative inline-flex items-center border rounded-md px-3 py-1.5 text-sm bg-white cursor-pointer h-9 min-w-[90px] hover:bg-gray-50"
                 onClick={() =>
                   fromRef.current?.showPicker
                     ? fromRef.current.showPicker()
                     : fromRef.current?.focus()
                 }
               >
-                <span className="text-gray-600 mr-2">From</span>
-                {fromDate && (
-                  <span className="ml-2 text-gray-700">
-                    {new Date(fromDate).toLocaleDateString()}
-                  </span>
-                )}
-                <Calendar className="w-4 h-4 text-gray-500 ml-auto" />
+                <Calendar className="w-4 h-4 text-gray-500 mr-1.5" />
+                <span className="text-gray-600">
+                  {fromDate
+                    ? new Date(fromDate).toLocaleDateString("en-US", {
+                        month: "short",
+                        day: "numeric",
+                      })
+                    : "From"}
+                </span>
                 <input
                   type="date"
                   ref={fromRef}
@@ -344,20 +343,22 @@ export default function ComplaintList() {
                 />
               </div>
               <div
-                className="relative inline-flex items-center border rounded-md px-2 py-2 text-sm bg-white select-none cursor-pointer min-w-[105px] w-auto"
+                className="relative inline-flex items-center border rounded-md px-3 py-1.5 text-sm bg-white cursor-pointer h-9 min-w-[90px] hover:bg-gray-50"
                 onClick={() =>
                   toRef.current?.showPicker
                     ? toRef.current.showPicker()
                     : toRef.current?.focus()
                 }
               >
-                <span className="text-gray-600 mr-2">To</span>
-                {toDate && (
-                  <span className="ml-2 text-gray-700">
-                    {new Date(toDate).toLocaleDateString()}
-                  </span>
-                )}
-                <Calendar className="w-4 h-4 text-gray-500 ml-auto" />
+                <Calendar className="w-4 h-4 text-gray-500 mr-1.5" />
+                <span className="text-gray-600">
+                  {toDate
+                    ? new Date(toDate).toLocaleDateString("en-US", {
+                        month: "short",
+                        day: "numeric",
+                      })
+                    : "To"}
+                </span>
                 <input
                   type="date"
                   ref={toRef}
@@ -366,24 +367,26 @@ export default function ComplaintList() {
                   onChange={(e) => setToDate(e.target.value)}
                 />
               </div>
-              <div className="flex gap-2 w-full md:w-auto">
-                <Button type="submit">Apply</Button>
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => {
-                    setTrackingId("");
-                    setKeyword("");
-                    setCategory("");
-                    setPriority("");
-                    setFromDate("");
-                    setToDate("");
-                    loadComplaints();
-                  }}
-                >
-                  Reset
-                </Button>
-              </div>
+              <Button type="submit" size="sm" className="h-9">
+                Apply
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="h-9"
+                onClick={() => {
+                  setTrackingId("");
+                  setKeyword("");
+                  setCategory("");
+                  setPriority("");
+                  setFromDate("");
+                  setToDate("");
+                  loadComplaints();
+                }}
+              >
+                Reset
+              </Button>
             </form>
           </CardContent>
         </Card>
@@ -501,12 +504,21 @@ export default function ComplaintList() {
                           {new Date(complaint.createdAt).toLocaleDateString()}
                         </td>
                         <td className="py-2.5 px-3">
-                          <Link to={`/complaints/${complaint.id}`}>
-                            <Button variant="ghost" size="sm" className="gap-2">
-                              <Eye className="w-4 h-4" />
-                              View
-                            </Button>
-                          </Link>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="gap-2"
+                            onClick={() => {
+                              console.log(
+                                "Navigating to complaint:",
+                                complaint.id
+                              );
+                              navigate(`/complaints/${complaint.id}`);
+                            }}
+                          >
+                            <Eye className="w-4 h-4" />
+                            View
+                          </Button>
                         </td>
                       </tr>
                     ))}
