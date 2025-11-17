@@ -1,112 +1,121 @@
-export async function signup({ name, email, password, role }) {
-  const res = await fetch("/api/auth/signup", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ name, email, password, role }),
-  });
-  const data = await res.json().catch(() => ({}));
-  if (!res.ok) {
-    throw new Error(data.message || "Signup failed");
+import axios from "axios";
+
+// Create axios instance with default config
+const api = axios.create({
+  baseURL: "/api",
+  headers: {
+    "Content-Type": "application/json",
+  },
+});
+
+// Add request interceptor to include auth token
+api.interceptors.request.use(
+  (config) => {
+    const token = getToken();
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+    return config;
+  },
+  (error) => {
+    return Promise.reject(error);
   }
-  return data;
+);
+
+// Add response interceptor to handle errors
+api.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    const message = error.response?.data?.message || error.message;
+    return Promise.reject(new Error(message));
+  }
+);
+
+export async function signup({ name, email, password, role }) {
+  try {
+    const { data } = await api.post("/auth/signup", {
+      name,
+      email,
+      password,
+      role,
+    });
+    return data;
+  } catch (error) {
+    throw new Error(error.message || "Signup failed");
+  }
 }
 
 export async function login({ email, password }) {
-  const res = await fetch("/api/auth/login", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ email, password }),
-  });
-  const data = await res.json().catch(() => ({}));
-  if (!res.ok) {
-    throw new Error(data.message || "Invalid credentials");
+  try {
+    const { data } = await api.post("/auth/login", { email, password });
+    return data;
+  } catch (error) {
+    throw new Error(error.message || "Invalid credentials");
   }
-  return data;
 }
 
 export async function createComplaint(formData) {
-  const token = getToken();
-  const res = await fetch("/api/complaints", {
-    method: "POST",
-    headers: token ? { Authorization: `Bearer ${token}` } : {},
-    body: formData,
-  });
-  const data = await res.json().catch(() => ({}));
-  if (!res.ok) {
-    throw new Error(data.message || "Failed to create complaint");
+  try {
+    const token = getToken();
+    const { data } = await axios.post("/api/complaints", formData, {
+      headers: {
+        Authorization: token ? `Bearer ${token}` : "",
+      },
+    });
+    return data;
+  } catch (error) {
+    throw new Error(
+      error.response?.data?.message || "Failed to create complaint"
+    );
   }
-  return data;
 }
 
 export async function getComplaints() {
-  const token = getToken();
-  const res = await fetch("/api/complaints", {
-    headers: { Authorization: `Bearer ${token}` },
-  });
-  const data = await res.json().catch(() => ({}));
-  if (!res.ok) {
-    throw new Error(data.message || "Failed to fetch complaints");
+  try {
+    const { data } = await api.get("/complaints");
+    return data;
+  } catch (error) {
+    throw new Error(error.message || "Failed to fetch complaints");
   }
-  return data;
 }
 
 export async function getComplaint(id) {
-  const token = getToken();
-  const res = await fetch(`/api/complaints/${id}`, {
-    headers: { Authorization: `Bearer ${token}` },
-  });
-  const data = await res.json().catch(() => ({}));
-  if (!res.ok) {
-    throw new Error(data.message || "Failed to fetch complaint");
+  try {
+    const { data } = await api.get(`/complaints/${id}`);
+    return data;
+  } catch (error) {
+    throw new Error(error.message || "Failed to fetch complaint");
   }
-  return data;
 }
 
-export async function updateComplaint(id, data) {
-  const token = getToken();
-  const res = await fetch(`/api/complaints/${id}`, {
-    method: "PUT",
-    headers: {
-      Authorization: `Bearer ${token}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify(data),
-  });
-  const result = await res.json().catch(() => ({}));
-  if (!res.ok) {
-    throw new Error(result.message || "Failed to update complaint");
+export async function updateComplaint(id, complaintData) {
+  try {
+    const { data } = await api.put(`/complaints/${id}`, complaintData);
+    return data;
+  } catch (error) {
+    throw new Error(error.message || "Failed to update complaint");
   }
-  return result;
 }
 
 export async function withdrawComplaint(id) {
-  const token = getToken();
-  const res = await fetch(`/api/complaints/${id}/withdraw`, {
-    method: "POST",
-    headers: { Authorization: `Bearer ${token}` },
-  });
-  const data = await res.json().catch(() => ({}));
-  if (!res.ok) {
-    throw new Error(data.message || "Failed to withdraw complaint");
+  try {
+    const { data } = await api.post(`/complaints/${id}/withdraw`);
+    return data;
+  } catch (error) {
+    throw new Error(error.message || "Failed to withdraw complaint");
   }
-  return data;
 }
 
 export async function updateComplaintStatus(id, status, adminNotes) {
-  const token = getToken();
-  const res = await fetch(`/api/complaints/${id}/status`, {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${token}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({ status, adminNotes }),
-  });
-  const data = await res.json().catch(() => ({}));
-  if (!res.ok) {
-    throw new Error(data.message || "Failed to update status");
+  try {
+    const { data } = await api.post(`/complaints/${id}/status`, {
+      status,
+      adminNotes,
+    });
+    return data;
+  } catch (error) {
+    throw new Error(error.message || "Failed to update status");
   }
-  return data;
 }
 
 export function saveToken(token) {
@@ -144,15 +153,12 @@ export function clearUser() {
 }
 
 export async function getOfficers() {
-  const token = getToken();
-  const res = await fetch("/api/complaints/officers", {
-    headers: { Authorization: `Bearer ${token}` },
-  });
-  const data = await res.json().catch(() => ({}));
-  if (!res.ok) {
-    throw new Error(data.message || "Failed to fetch officers");
+  try {
+    const { data } = await api.get("/complaints/officers");
+    return data;
+  } catch (error) {
+    throw new Error(error.message || "Failed to fetch officers");
   }
-  return data;
 }
 
 export async function assignOfficer(
@@ -160,151 +166,117 @@ export async function assignOfficer(
   officerId,
   targetResolutionDate
 ) {
-  const token = getToken();
-  const res = await fetch(`/api/complaints/${complaintId}/assign`, {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${token}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({ officerId, targetResolutionDate }),
-  });
-  const data = await res.json().catch(() => ({}));
-  if (!res.ok) {
-    throw new Error(data.message || "Failed to assign officer");
+  try {
+    const { data } = await api.post(`/complaints/${complaintId}/assign`, {
+      officerId,
+      targetResolutionDate,
+    });
+    return data;
+  } catch (error) {
+    throw new Error(error.message || "Failed to assign officer");
   }
-  return data;
 }
 
 export async function unassignOfficer(complaintId) {
-  const token = getToken();
-  const res = await fetch(`/api/complaints/${complaintId}/unassign`, {
-    method: "POST",
-    headers: { Authorization: `Bearer ${token}` },
-  });
-  const data = await res.json().catch(() => ({}));
-  if (!res.ok) {
-    throw new Error(data.message || "Failed to unassign officer");
+  try {
+    const { data } = await api.post(`/complaints/${complaintId}/unassign`);
+    return data;
+  } catch (error) {
+    throw new Error(error.message || "Failed to unassign officer");
   }
-  return data;
 }
 
 export async function addInternalNote(complaintId, content) {
-  const token = getToken();
-  const res = await fetch(`/api/complaints/${complaintId}/internal-notes`, {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${token}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({ content }),
-  });
-  const data = await res.json().catch(() => ({}));
-  if (!res.ok) {
-    throw new Error(data.message || "Failed to add internal note");
+  try {
+    const { data } = await api.post(
+      `/complaints/${complaintId}/internal-notes`,
+      { content }
+    );
+    return data;
+  } catch (error) {
+    throw new Error(error.message || "Failed to add internal note");
   }
-  return data;
 }
 
 export async function getInternalNotes(complaintId) {
-  const token = getToken();
-  const res = await fetch(`/api/complaints/${complaintId}/internal-notes`, {
-    headers: { Authorization: `Bearer ${token}` },
-  });
-  const data = await res.json().catch(() => ({}));
-  if (!res.ok) {
-    throw new Error(data.message || "Failed to fetch internal notes");
+  try {
+    const { data } = await api.get(`/complaints/${complaintId}/internal-notes`);
+    return data;
+  } catch (error) {
+    throw new Error(error.message || "Failed to fetch internal notes");
   }
-  return data;
 }
 
 export async function addPublicUpdate(complaintId, content) {
-  const token = getToken();
-  const res = await fetch(`/api/complaints/${complaintId}/public-updates`, {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${token}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({ content }),
-  });
-  const data = await res.json().catch(() => ({}));
-  if (!res.ok) {
-    throw new Error(data.message || "Failed to add public update");
+  try {
+    const { data } = await api.post(
+      `/complaints/${complaintId}/public-updates`,
+      { content }
+    );
+    return data;
+  } catch (error) {
+    throw new Error(error.message || "Failed to add public update");
   }
-  return data;
 }
 
 export async function getPublicUpdates(complaintId) {
-  const token = getToken();
-  const res = await fetch(`/api/complaints/${complaintId}/public-updates`, {
-    headers: token ? { Authorization: `Bearer ${token}` } : {},
-  });
-  const data = await res.json().catch(() => ({}));
-  if (!res.ok) {
-    throw new Error(data.message || "Failed to fetch public updates");
+  try {
+    const token = getToken();
+    const { data } = await axios.get(
+      `/api/complaints/${complaintId}/public-updates`,
+      {
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      }
+    );
+    return data;
+  } catch (error) {
+    throw new Error(
+      error.response?.data?.message || "Failed to fetch public updates"
+    );
   }
-  return data;
 }
 
 export async function getAssignedComplaints() {
-  const token = getToken();
-  const res = await fetch("/api/complaints/assigned", {
-    headers: { Authorization: `Bearer ${token}` },
-  });
-  const data = await res.json().catch(() => ({}));
-  if (!res.ok) {
-    throw new Error(data.message || "Failed to fetch assigned complaints");
+  try {
+    const { data } = await api.get("/complaints/assigned");
+    return data;
+  } catch (error) {
+    throw new Error(error.message || "Failed to fetch assigned complaints");
   }
-  return data;
 }
 
-export async function reopenComplaint(id) {
-  const token = getToken();
-  const res = await fetch(`/api/complaints/${id}/reopen`, {
-    method: "POST",
-    headers: { Authorization: `Bearer ${token}` },
-  });
-  const data = await res.json().catch(() => ({}));
-  if (!res.ok) {
-    throw new Error(data.message || "Failed to reopen complaint");
+export async function reopenComplaint(id, feedback) {
+  try {
+    const { data } = await api.post(`/complaints/${id}/reopen`, { feedback });
+    return data;
+  } catch (error) {
+    throw new Error(error.message || "Failed to reopen complaint");
   }
-  return data;
 }
 
 export async function searchComplaints(params = {}) {
-  const token = getToken();
-  const query = new URLSearchParams();
-  Object.entries(params).forEach(([k, v]) => {
-    if (v !== undefined && v !== null && v !== "") query.append(k, v);
-  });
-  const res = await fetch(`/api/complaints/search?${query.toString()}`, {
-    headers: { Authorization: `Bearer ${token}` },
-  });
-  const data = await res.json().catch(() => ({}));
-  if (!res.ok) {
-    throw new Error(data.message || "Search failed");
+  try {
+    const { data } = await api.get("/complaints/search", { params });
+    return data;
+  } catch (error) {
+    throw new Error(error.message || "Search failed");
   }
-  return data;
 }
 
 export async function getAdminMetrics() {
-  const token = getToken();
-  const res = await fetch(`/api/complaints/metrics/admin`, {
-    headers: { Authorization: `Bearer ${token}` },
-  });
-  const data = await res.json().catch(() => ({}));
-  if (!res.ok) throw new Error(data.message || "Failed to fetch admin metrics");
-  return data;
+  try {
+    const { data } = await api.get("/complaints/metrics/admin");
+    return data;
+  } catch (error) {
+    throw new Error(error.message || "Failed to fetch admin metrics");
+  }
 }
 
 export async function getOfficerMetrics() {
-  const token = getToken();
-  const res = await fetch(`/api/complaints/metrics/officer`, {
-    headers: { Authorization: `Bearer ${token}` },
-  });
-  const data = await res.json().catch(() => ({}));
-  if (!res.ok)
-    throw new Error(data.message || "Failed to fetch officer metrics");
-  return data;
+  try {
+    const { data } = await api.get("/complaints/metrics/officer");
+    return data;
+  } catch (error) {
+    throw new Error(error.message || "Failed to fetch officer metrics");
+  }
 }

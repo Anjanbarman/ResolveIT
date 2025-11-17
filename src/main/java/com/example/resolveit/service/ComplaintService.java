@@ -391,7 +391,7 @@ public class ComplaintService {
     }
 
     // Citizen reopen
-    public Complaint reopenComplaint(Long id, Authentication authentication) {
+    public Complaint reopenComplaint(Long id, String feedback, Authentication authentication) {
         Long safeId = java.util.Objects.requireNonNull(id, "id cannot be null");
         Complaint complaint = complaintRepository.findById(safeId)
                 .orElseThrow(() -> new IllegalArgumentException("Complaint not found"));
@@ -413,6 +413,17 @@ public class ComplaintService {
         complaint.setStatus(ComplaintStatus.REOPENED);
         complaint.setReopenedAt(LocalDateTime.now());
         complaint.setAssignedOfficer(null);
+
+        // If feedback is provided, add it as a public update
+        if (feedback != null && !feedback.trim().isEmpty()) {
+            PublicUpdate update = PublicUpdate.builder()
+                    .complaint(complaint)
+                    .author(user)
+                    .content("Reopening Reason: " + feedback)
+                    .build();
+            publicUpdateRepository.save(update);
+        }
+
         return complaintRepository.save(complaint);
     }
 
