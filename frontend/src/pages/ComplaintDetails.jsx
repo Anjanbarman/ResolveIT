@@ -29,6 +29,14 @@ import {
 import { Alert, AlertDescription } from "../components/ui/alert";
 import { Badge } from "../components/ui/badge";
 import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "../components/ui/dialog";
+import {
   FileText,
   Users,
   MessageSquare,
@@ -54,6 +62,8 @@ export default function ComplaintDetails() {
   const [selectedOfficerId, setSelectedOfficerId] = useState("");
   const [deadline, setDeadline] = useState("");
   const [activeTab, setActiveTab] = useState("public");
+  const [showReopenDialog, setShowReopenDialog] = useState(false);
+  const [reopenFeedback, setReopenFeedback] = useState("");
 
   useEffect(() => {
     if (!user) {
@@ -146,7 +156,9 @@ export default function ComplaintDetails() {
 
   async function handleReopen() {
     try {
-      await reopenComplaint(id);
+      await reopenComplaint(id, reopenFeedback);
+      setShowReopenDialog(false);
+      setReopenFeedback("");
       await loadComplaint();
     } catch (err) {
       setError(err.message);
@@ -438,40 +450,85 @@ export default function ComplaintDetails() {
 
           {/* Complaint Timeline */}
           <Card className="border-0 shadow-md">
-            <CardHeader className="pb-2">
-              <CardTitle className="text-lg font-semibold text-gray-900">
-                Complaint Timeline
-              </CardTitle>
+            <CardHeader className="pb-3">
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-lg font-semibold text-gray-900">
+                  Complaint Timeline
+                </CardTitle>
+                <Badge
+                  className={
+                    getStatusColor(complaint.status) +
+                    " border text-xs font-semibold shadow-sm"
+                  }
+                >
+                  {complaint.status.replace("_", " ")}
+                </Badge>
+              </div>
             </CardHeader>
             <CardContent>
               {(() => {
                 const steps = [
                   { key: "PENDING", label: "Pending" },
-                  { key: "IN_PROGRESS", label: "In Progress" },
+                  { key: "IN_PROGRESS", label: "Under Review" },
                   { key: "RESOLVED", label: "Resolved" },
                 ];
                 const current = getTimelineStep(complaint.status);
                 return (
-                  <div className="space-y-3">
-                    <ol className="flex items-center justify-between w-full">
-                      {steps.map((step, idx) => {
-                        const isDone = idx < current;
-                        const isCurrent = idx === current;
-                        return (
-                          <li
-                            key={step.key}
-                            className="flex flex-col items-center flex-1"
-                          >
-                            <div className="flex items-center w-full">
+                  <div>
+                    {/* Timeline circles and lines */}
+                    <div className="relative flex items-center w-full mb-3">
+                      {/* Connecting lines with colors */}
+                      <div
+                        className="absolute inset-0 flex items-center px-6"
+                        aria-hidden="true"
+                      >
+                        <div className="flex items-center w-full">
+                          {/* First line segment (Pending to In Progress) */}
+                          <div
+                            className={`flex-1 h-0.5 transition-all ${
+                              current >= 1 ? "bg-green-500" : "bg-gray-300"
+                            }`}
+                          ></div>
+                          {/* Second line segment (In Progress to Resolved) */}
+                          <div
+                            className={`flex-1 h-0.5 transition-all ${
+                              current >= 2
+                                ? "bg-green-500"
+                                : current === 1
+                                ? "bg-blue-400"
+                                : "bg-gray-300"
+                            }`}
+                          ></div>
+                        </div>
+                      </div>
+                      <div className="relative flex justify-between w-full">
+                        {steps.map((step, idx) => {
+                          const isDone = idx < current;
+                          const isCurrent = idx === current;
+                          const isUpcoming = idx > current;
+                          return (
+                            <div
+                              key={step.key}
+                              className={
+                                "flex items-center justify-center w-12 h-12 rounded-full border-2 transition-all shadow-sm bg-white " +
+                                (isDone
+                                  ? "border-green-500"
+                                  : isCurrent
+                                  ? "border-blue-500 ring-4 ring-blue-100"
+                                  : "border-gray-300")
+                              }
+                            >
                               <div
                                 className={
-                                  "relative z-10 flex items-center justify-center w-9 h-9 rounded-full border-2 transition-all " +
-                                  (isDone || isCurrent
-                                    ? "bg-green-500 border-green-500 text-white"
-                                    : "bg-white border-gray-300 text-gray-400")
+                                  "flex items-center justify-center w-full h-full rounded-full " +
+                                  (isDone
+                                    ? "bg-green-500 text-white"
+                                    : isCurrent
+                                    ? "bg-blue-500 text-white"
+                                    : "bg-gray-100 text-gray-400")
                                 }
                               >
-                                {(isDone || isCurrent) && (
+                                {isDone ? (
                                   <svg
                                     xmlns="http://www.w3.org/2000/svg"
                                     viewBox="0 0 24 24"
@@ -480,46 +537,45 @@ export default function ComplaintDetails() {
                                   >
                                     <path
                                       fillRule="evenodd"
-                                      d="M2.25 12a9.75 9.75 0 1119.5 0 9.75 9.75 0 01-19.5 0zm14.03-2.28a.75.75 0 10-1.06-1.06l-4.72 4.72-1.69-1.69a.75.75 0 10-1.06 1.06l2.22 2.22c.3.3.79.3 1.06 0l5.25-5.25z"
+                                      d="M19.916 4.626a.75.75 0 01.208 1.04l-9 13.5a.75.75 0 01-1.154.114l-6-6a.75.75 0 011.06-1.06l5.353 5.353 8.493-12.739a.75.75 0 011.04-.208z"
                                       clipRule="evenodd"
                                     />
                                   </svg>
+                                ) : isCurrent ? (
+                                  <div className="w-3 h-3 bg-white rounded-full animate-pulse" />
+                                ) : (
+                                  <div className="w-2 h-2 bg-gray-400 rounded-full" />
                                 )}
                               </div>
-                              {idx < steps.length - 1 && (
-                                <div
-                                  className={
-                                    "flex-1 h-1 mx-2 rounded-full transition-all " +
-                                    (idx < current
-                                      ? "bg-green-500"
-                                      : "bg-gray-200")
-                                  }
-                                />
-                              )}
                             </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+
+                    {/* Timeline labels - directly below circles */}
+                    <div className="flex justify-between w-full -mt-1">
+                      {steps.map((step, idx) => {
+                        const isDone = idx < current;
+                        const isCurrent = idx === current;
+                        const isUpcoming = idx > current;
+                        return (
+                          <div key={step.key} className="w-20">
                             <p
                               className={
-                                "mt-2 text-xs font-medium text-center " +
+                                "text-sm font-medium text-center leading-tight whitespace-nowrap " +
                                 (isCurrent
-                                  ? "text-green-700"
+                                  ? "text-blue-600 font-semibold"
                                   : isDone
-                                  ? "text-gray-800"
+                                  ? "text-gray-700"
                                   : "text-gray-500")
                               }
                             >
                               {step.label}
                             </p>
-                          </li>
+                          </div>
                         );
                       })}
-                    </ol>
-                    <div className="bg-gray-50 rounded-md p-2 border border-gray-200">
-                      <p className="text-xs text-gray-600">
-                        Status:{" "}
-                        <span className="font-semibold text-gray-900">
-                          {complaint.status.replace("_", " ")}
-                        </span>
-                      </p>
                     </div>
                   </div>
                 );
@@ -553,7 +609,7 @@ export default function ComplaintDetails() {
               )}
               {user.role === "CITIZEN" && complaint.status === "RESOLVED" && (
                 <Button
-                  onClick={handleReopen}
+                  onClick={() => setShowReopenDialog(true)}
                   variant="outline"
                   className="w-full"
                 >
@@ -782,6 +838,55 @@ export default function ComplaintDetails() {
           </Card>
         </div>
       </main>
+
+      {/* Reopen Complaint Dialog */}
+      <Dialog open={showReopenDialog} onOpenChange={setShowReopenDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Reopen Complaint</DialogTitle>
+            <DialogDescription>
+              Please provide feedback on why you are reopening this complaint.
+              This will help us improve our service and address your concerns.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <Label htmlFor="feedback" className="text-sm font-medium">
+                Feedback / Reason for Reopening
+              </Label>
+              <Textarea
+                id="feedback"
+                placeholder="Please explain why you're not satisfied with the resolution..."
+                value={reopenFeedback}
+                onChange={(e) => setReopenFeedback(e.target.value)}
+                rows={5}
+                className="mt-2"
+              />
+            </div>
+            {error && (
+              <Alert variant="destructive">
+                <AlertCircle className="h-4 w-4" />
+                <AlertDescription>{error}</AlertDescription>
+              </Alert>
+            )}
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setShowReopenDialog(false);
+                setReopenFeedback("");
+                setError("");
+              }}
+            >
+              Cancel
+            </Button>
+            <Button onClick={handleReopen} disabled={!reopenFeedback.trim()}>
+              Submit & Reopen
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

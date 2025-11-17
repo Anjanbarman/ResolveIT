@@ -275,9 +275,13 @@ public class ComplaintController {
     }
 
     @PostMapping("/{id}/reopen")
-    public ResponseEntity<?> reopenComplaint(@PathVariable Long id, Authentication authentication) {
+    public ResponseEntity<?> reopenComplaint(
+            @PathVariable Long id,
+            @RequestBody(required = false) ReopenRequest request,
+            Authentication authentication) {
         try {
-            Complaint c = complaintService.reopenComplaint(id, authentication);
+            String feedback = request != null ? request.getFeedback() : null;
+            Complaint c = complaintService.reopenComplaint(id, feedback, authentication);
             return ResponseEntity.ok(toDto(c));
         } catch (IllegalArgumentException e) {
             return ResponseEntity.status(400).body(Map.of("message", e.getMessage()));
@@ -360,5 +364,10 @@ public class ComplaintController {
     @Data
     static class NoteRequest {
         private String content;
+    }
+
+    @Data
+    static class ReopenRequest {
+        private String feedback;
     }
 }
