@@ -21,4 +21,6 @@ public interface ComplaintRepository extends JpaRepository<Complaint, Long> {
     List<Complaint> findByAssignedOfficerOrderByCreatedAtDesc(User assignedOfficer);
 
     Complaint findByTrackingId(String trackingId);
+
+    Complaint findByAttachmentPath(String attachmentPath);
 }

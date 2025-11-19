@@ -5,6 +5,10 @@ import com.example.resolveit.service.ComplaintService;
 import lombok.Data;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.core.io.Resource;
+import org.springframework.core.io.UrlResource;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
@@ -231,6 +235,80 @@ public class ComplaintController {
             return ResponseEntity.ok(dtos);
         } catch (Exception e) {
             return ResponseEntity.status(400).body(Map.of("message", e.getMessage()));
+        }
+    }
+
+    @GetMapping("/{id}/attachment")
+    public ResponseEntity<?> getAttachment(@PathVariable Long id, Authentication authentication) {
+        try {
+            Complaint c = complaintService.getComplaintById(id, authentication);
+            String filename = c.getAttachmentPath();
+            if (filename == null || filename.isBlank()) {
+                return ResponseEntity.status(404).body(Map.of("message", "No attachment"));
+            }
+            java.nio.file.Path base = java.nio.file.Paths.get("uploads/complaints");
+            java.nio.file.Path path = base.resolve(filename).normalize();
+            if (!path.startsWith(base)) {
+                return ResponseEntity.status(400).body(Map.of("message", "Invalid path"));
+            }
+            if (!java.nio.file.Files.exists(path)) {
+                return ResponseEntity.status(404).body(Map.of("message", "File not found"));
+            }
+            Resource resource = new UrlResource(path.toUri());
+            String contentType = java.nio.file.Files.probeContentType(path);
+            if (contentType == null)
+                contentType = MediaType.APPLICATION_OCTET_STREAM_VALUE;
+            boolean inline = contentType.startsWith("image/") || contentType.equals("application/pdf");
+            String dispositionType = inline ? "inline" : "attachment";
+            return ResponseEntity.ok()
+                    .header(HttpHeaders.CONTENT_DISPOSITION, dispositionType + "; filename=\"" + filename + "\"")
+                    .contentType(MediaType.parseMediaType(contentType))
+                    .body(resource);
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.status(400).body(Map.of("message", e.getMessage()));
+        } catch (Exception e) {
+            return ResponseEntity.status(500).body(Map.of("message", "Could not read attachment"));
+        }
+    }
+
+    @GetMapping("/attachments/by-filename/{filename}")
+    public ResponseEntity<?> getAttachmentByFilename(@PathVariable String filename, Authentication authentication) {
+        try {
+            if (filename == null || filename.isBlank()) {
+                return ResponseEntity.status(400).body(Map.of("message", "Filename required"));
+            }
+            if (filename.contains("..") || filename.contains("/") || filename.contains("\\")) {
+                return ResponseEntity.status(400).body(Map.of("message", "Invalid filename"));
+            }
+            // Find complaint with this attachment (permission still checked below)
+            Complaint c = complaintService.getAllComplaints(authentication).stream()
+                    .filter(comp -> filename.equals(comp.getAttachmentPath()))
+                    .findFirst()
+                    .orElse(null);
+            if (c == null) {
+                return ResponseEntity.status(404).body(Map.of("message", "Complaint not found for attachment"));
+            }
+            // Re-apply access rules
+            complaintService.getComplaintById(c.getId(), authentication);
+            java.nio.file.Path base = java.nio.file.Paths.get("uploads/complaints");
+            java.nio.file.Path path = base.resolve(filename).normalize();
+            if (!java.nio.file.Files.exists(path)) {
+                return ResponseEntity.status(404).body(Map.of("message", "File not found"));
+            }
+            Resource resource = new UrlResource(path.toUri());
+            String contentType = java.nio.file.Files.probeContentType(path);
+            if (contentType == null)
+                contentType = MediaType.APPLICATION_OCTET_STREAM_VALUE;
+            boolean inline = contentType.startsWith("image/") || contentType.equals("application/pdf");
+            String dispositionType = inline ? "inline" : "attachment";
+            return ResponseEntity.ok()
+                    .header(HttpHeaders.CONTENT_DISPOSITION, dispositionType + "; filename=\"" + filename + "\"")
+                    .contentType(MediaType.parseMediaType(contentType))
+                    .body(resource);
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.status(400).body(Map.of("message", e.getMessage()));
+        } catch (Exception e) {
+            return ResponseEntity.status(500).body(Map.of("message", "Could not read attachment"));
         }
     }
 

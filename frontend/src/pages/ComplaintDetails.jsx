@@ -14,6 +14,8 @@ import {
   getPublicUpdates,
   updateComplaintStatus,
   reopenComplaint,
+  updateComplaint,
+  withdrawComplaint,
 } from "../services/api";
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
@@ -44,6 +46,8 @@ import {
   List,
   LogOut,
   Home,
+  Edit,
+  XCircle,
 } from "lucide-react";
 
 export default function ComplaintDetails() {
@@ -64,6 +68,11 @@ export default function ComplaintDetails() {
   const [activeTab, setActiveTab] = useState("public");
   const [showReopenDialog, setShowReopenDialog] = useState(false);
   const [reopenFeedback, setReopenFeedback] = useState("");
+  const [showEditDialog, setShowEditDialog] = useState(false);
+  const [editTitle, setEditTitle] = useState("");
+  const [editDescription, setEditDescription] = useState("");
+  const [editCategory, setEditCategory] = useState("");
+  const [editPriority, setEditPriority] = useState("");
 
   useEffect(() => {
     if (!user) {
@@ -159,6 +168,45 @@ export default function ComplaintDetails() {
       await reopenComplaint(id, reopenFeedback);
       setShowReopenDialog(false);
       setReopenFeedback("");
+      await loadComplaint();
+    } catch (err) {
+      setError(err.message);
+    }
+  }
+
+  function openEditDialog() {
+    setEditTitle(complaint.title);
+    setEditDescription(complaint.description);
+    setEditCategory(complaint.category);
+    setEditPriority(complaint.priority);
+    setShowEditDialog(true);
+  }
+
+  async function handleEditComplaint() {
+    try {
+      await updateComplaint(id, {
+        title: editTitle,
+        description: editDescription,
+        category: editCategory,
+        priority: editPriority,
+      });
+      setShowEditDialog(false);
+      await loadComplaint();
+    } catch (err) {
+      setError(err.message);
+    }
+  }
+
+  async function handleWithdrawComplaint() {
+    if (
+      !window.confirm(
+        "Are you sure you want to withdraw this complaint? This action cannot be undone."
+      )
+    ) {
+      return;
+    }
+    try {
+      await withdrawComplaint(id);
       await loadComplaint();
     } catch (err) {
       setError(err.message);
@@ -434,7 +482,9 @@ export default function ComplaintDetails() {
                         Attachment
                       </p>
                       <a
-                        href={complaint.attachmentPath}
+                        href={`/api/files/complaints/${encodeURIComponent(
+                          complaint.attachmentPath
+                        )}`}
                         target="_blank"
                         rel="noreferrer"
                         className="text-sm font-semibold text-green-700 hover:text-green-900 hover:underline"
@@ -606,6 +656,26 @@ export default function ComplaintDetails() {
                 <Button className="w-full" onClick={handleMarkResolved}>
                   Mark as Resolved
                 </Button>
+              )}
+              {user.role === "CITIZEN" && complaint.status === "PENDING" && (
+                <>
+                  <Button
+                    onClick={openEditDialog}
+                    variant="outline"
+                    className="w-full gap-2"
+                  >
+                    <Edit className="w-4 h-4" />
+                    Edit Complaint
+                  </Button>
+                  <Button
+                    onClick={handleWithdrawComplaint}
+                    variant="destructive"
+                    className="w-full gap-2"
+                  >
+                    <XCircle className="w-4 h-4" />
+                    Withdraw Complaint
+                  </Button>
+                </>
               )}
               {user.role === "CITIZEN" && complaint.status === "RESOLVED" && (
                 <Button
@@ -838,6 +908,106 @@ export default function ComplaintDetails() {
           </Card>
         </div>
       </main>
+
+      {/* Edit Complaint Dialog */}
+      <Dialog open={showEditDialog} onOpenChange={setShowEditDialog}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Edit Complaint</DialogTitle>
+            <DialogDescription>
+              Update the details of your complaint. You can only edit complaints
+              that are in PENDING status.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <Label htmlFor="edit-title" className="text-sm font-medium">
+                Title *
+              </Label>
+              <Input
+                id="edit-title"
+                value={editTitle}
+                onChange={(e) => setEditTitle(e.target.value)}
+                placeholder="Brief summary of the issue"
+                className="mt-2"
+              />
+            </div>
+            <div>
+              <Label htmlFor="edit-description" className="text-sm font-medium">
+                Description *
+              </Label>
+              <Textarea
+                id="edit-description"
+                value={editDescription}
+                onChange={(e) => setEditDescription(e.target.value)}
+                placeholder="Detailed description of the complaint"
+                rows={6}
+                className="mt-2"
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="edit-category" className="text-sm font-medium">
+                  Category *
+                </Label>
+                <Select
+                  id="edit-category"
+                  value={editCategory}
+                  onChange={(e) => setEditCategory(e.target.value)}
+                  className="mt-2"
+                >
+                  <option value="INFRASTRUCTURE">Infrastructure</option>
+                  <option value="SANITATION">Sanitation</option>
+                  <option value="UTILITIES">Utilities</option>
+                  <option value="TRAFFIC">Traffic</option>
+                  <option value="SAFETY">Safety</option>
+                  <option value="ENVIRONMENT">Environment</option>
+                  <option value="OTHER">Other</option>
+                </Select>
+              </div>
+              <div>
+                <Label htmlFor="edit-priority" className="text-sm font-medium">
+                  Priority *
+                </Label>
+                <Select
+                  id="edit-priority"
+                  value={editPriority}
+                  onChange={(e) => setEditPriority(e.target.value)}
+                  className="mt-2"
+                >
+                  <option value="LOW">Low</option>
+                  <option value="MEDIUM">Medium</option>
+                  <option value="HIGH">High</option>
+                  <option value="URGENT">Urgent</option>
+                </Select>
+              </div>
+            </div>
+            {error && (
+              <Alert variant="destructive">
+                <AlertCircle className="h-4 w-4" />
+                <AlertDescription>{error}</AlertDescription>
+              </Alert>
+            )}
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setShowEditDialog(false);
+                setError("");
+              }}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleEditComplaint}
+              disabled={!editTitle.trim() || !editDescription.trim()}
+            >
+              Save Changes
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Reopen Complaint Dialog */}
       <Dialog open={showReopenDialog} onOpenChange={setShowReopenDialog}>
