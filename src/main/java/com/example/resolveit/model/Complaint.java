@@ -7,6 +7,8 @@ import org.hibernate.annotations.UpdateTimestamp;
 
 import java.time.LocalDateTime;
 import java.time.LocalDate;
+import java.util.List;
+import java.util.ArrayList;
 
 @Getter
 @Setter
@@ -36,7 +38,7 @@ public class Complaint {
     private ComplaintPriority priority = ComplaintPriority.MEDIUM;
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
+    @Column(nullable = false, length = 20) // Increased length to avoid MySQL truncation for values like IN_PROGRESS
     @Builder.Default
     private ComplaintStatus status = ComplaintStatus.PENDING;
 
@@ -79,4 +81,12 @@ public class Complaint {
 
     @Column(length = 1000)
     private String adminNotes;
+
+    @OneToMany(mappedBy = "complaint", cascade = CascadeType.ALL, orphanRemoval = true)
+    @Builder.Default
+    private List<PublicUpdate> publicUpdates = new ArrayList<>();
+
+    @OneToMany(mappedBy = "complaint", cascade = CascadeType.ALL, orphanRemoval = true)
+    @Builder.Default
+    private List<InternalNote> internalNotes = new ArrayList<>();
 }
