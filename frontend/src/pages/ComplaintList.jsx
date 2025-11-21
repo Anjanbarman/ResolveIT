@@ -8,6 +8,7 @@ import {
   getAssignedComplaints,
   searchComplaints,
   downloadComplaintsCsv,
+  downloadComplaintsPdf,
 } from "../services/api";
 import { Button } from "../components/ui/button";
 import {
@@ -45,6 +46,7 @@ export default function ComplaintList() {
   const [fromDate, setFromDate] = useState("");
   const [toDate, setToDate] = useState("");
   const [selectedIds, setSelectedIds] = useState([]);
+  const [showDownloadMenu, setShowDownloadMenu] = useState(false);
   const fromRef = useRef(null);
   const toRef = useRef(null);
 
@@ -77,6 +79,17 @@ export default function ComplaintList() {
     } catch (_) {}
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [location.search]);
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (showDownloadMenu && !event.target.closest('.relative')) {
+        setShowDownloadMenu(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [showDownloadMenu]);
 
   async function loadComplaints() {
     try {
@@ -125,6 +138,23 @@ export default function ComplaintList() {
     } catch (err) {
       console.error("Download failed", err);
       alert("Failed to download CSV");
+    }
+  }
+
+  async function handleDownloadPdf(ids) {
+    try {
+      const blob = await downloadComplaintsPdf(ids);
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `complaints_export_${new Date().toISOString().split("T")[0]}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+    } catch (err) {
+      console.error("Download failed", err);
+      alert("Failed to download PDF");
     }
   }
 
@@ -265,17 +295,59 @@ export default function ComplaintList() {
                 : "View and manage all your complaints"}
             </p>
           </div>
-          <Button
-            variant="outline"
-            size="lg"
-            className="gap-2"
-            onClick={() => handleDownloadCsv(selectedIds)}
-          >
-            <FileText className="w-5 h-5" />
-            {selectedIds.length > 0
-              ? `Download Selected (${selectedIds.length})`
-              : "Download All"}
-          </Button>
+          <div className="relative">
+            <Button
+              variant="outline"
+              size="lg"
+              className="gap-2"
+              onClick={() => setShowDownloadMenu(!showDownloadMenu)}
+            >
+              <FileText className="w-5 h-5" />
+              {selectedIds.length > 0
+                ? `Download (${selectedIds.length})`
+                : "Download"}
+              <svg
+                className="w-4 h-4 ml-1"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M19 9l-7 7-7-7"
+                />
+              </svg>
+            </Button>
+            
+            {showDownloadMenu && (
+              <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg border border-gray-200 z-50">
+                <div className="py-1">
+                  <button
+                    onClick={() => {
+                      handleDownloadCsv(selectedIds);
+                      setShowDownloadMenu(false);
+                    }}
+                    className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center gap-2"
+                  >
+                    <FileText className="w-4 h-4" />
+                    Download as CSV
+                  </button>
+                  <button
+                    onClick={() => {
+                      handleDownloadPdf(selectedIds);
+                      setShowDownloadMenu(false);
+                    }}
+                    className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center gap-2"
+                  >
+                    <FileText className="w-4 h-4" />
+                    Download as PDF
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
         </div>
 
         <Card className="mb-4 border-0 shadow-md">

@@ -307,3 +307,31 @@ export async function downloadComplaintsCsv(ids = []) {
     throw new Error(error.message || "Failed to download CSV");
   }
 }
+
+export async function downloadComplaintsPdf(ids = []) {
+  try {
+    const token = getToken();
+    const params = {};
+    if (ids && ids.length > 0) {
+      params.ids = ids.join(",");
+    }
+    const response = await axios.get("/api/export/complaints-pdf", {
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+      params,
+      responseType: "blob",
+    });
+    return response.data;
+  } catch (error) {
+    if (error.response?.data instanceof Blob) {
+      const text = await error.response.data.text();
+      try {
+        const json = JSON.parse(text);
+        throw new Error(json.message || "Failed to download PDF");
+      } catch (e) {
+        throw new Error("Failed to download PDF: " + text);
+      }
+    }
+    throw new Error(error.message || "Failed to download PDF");
+  }
+}
+
