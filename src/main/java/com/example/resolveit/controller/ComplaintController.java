@@ -12,6 +12,7 @@ import org.springframework.http.MediaType;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
+import org.springframework.core.io.ByteArrayResource;
 
 import java.io.IOException;
 import java.time.LocalDate;
@@ -447,5 +448,17 @@ public class ComplaintController {
     @Data
     static class ReopenRequest {
         private String feedback;
+    }
+
+
+
+
+    private String escapeCsv(Object value) {
+        if (value == null) return "";
+        String str = value.toString();
+        if (str.contains(",") || str.contains("\"") || str.contains("\n")) {
+            return "\"" + str.replace("\"", "\"\"") + "\"";
+        }
+        return str;
     }
 }
