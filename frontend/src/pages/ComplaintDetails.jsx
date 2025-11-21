@@ -553,8 +553,10 @@ export default function ComplaintDetails() {
                       </div>
                       <div className="relative flex justify-between w-full">
                         {steps.map((step, idx) => {
-                          const isDone = idx < current;
-                          const isCurrent = idx === current;
+                          const isDone =
+                          idx < current ||
+                          (idx === current && complaint.status === "RESOLVED");
+                          const isCurrent = idx === current && complaint.status !== "RESOLVED";
                           const isUpcoming = idx > current;
                           return (
                             <div
@@ -606,8 +608,11 @@ export default function ComplaintDetails() {
                     {/* Timeline labels - directly below circles */}
                     <div className="flex justify-between w-full -mt-1">
                       {steps.map((step, idx) => {
-                        const isDone = idx < current;
-                        const isCurrent = idx === current;
+                        const isDone =
+                          idx < current ||
+                          (idx === current && complaint.status === "RESOLVED");
+                        const isCurrent =
+                          idx === current && complaint.status !== "RESOLVED";
                         const isUpcoming = idx > current;
                         return (
                           <div key={step.key} className="w-20">
