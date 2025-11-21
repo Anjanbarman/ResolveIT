@@ -103,7 +103,7 @@ export default function ComplaintDetails() {
         setPublicUpdates(updatesData);
       }
 
-      setActiveTab(user.role === "OFFICER" ? "internal" : "public");
+      setActiveTab("public");
     } catch (err) {
       setError(err.message);
     } finally {

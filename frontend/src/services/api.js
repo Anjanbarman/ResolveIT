@@ -280,3 +280,30 @@ export async function getOfficerMetrics() {
     throw new Error(error.message || "Failed to fetch officer metrics");
   }
 }
+
+export async function downloadComplaintsCsv(ids = []) {
+  try {
+    const token = getToken();
+    const params = {};
+    if (ids && ids.length > 0) {
+      params.ids = ids.join(",");
+    }
+    const response = await axios.get("/api/export/complaints", {
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+      params,
+      responseType: "blob",
+    });
+    return response.data;
+  } catch (error) {
+    if (error.response?.data instanceof Blob) {
+      const text = await error.response.data.text();
+      try {
+        const json = JSON.parse(text);
+        throw new Error(json.message || "Failed to download CSV");
+      } catch (e) {
+        throw new Error("Failed to download CSV: " + text);
+      }
+    }
+    throw new Error(error.message || "Failed to download CSV");
+  }
+}

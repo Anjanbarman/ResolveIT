@@ -7,6 +7,7 @@ import {
   getComplaints,
   getAssignedComplaints,
   searchComplaints,
+  downloadComplaintsCsv,
 } from "../services/api";
 import { Button } from "../components/ui/button";
 import {
@@ -43,6 +44,7 @@ export default function ComplaintList() {
   const [priority, setPriority] = useState("");
   const [fromDate, setFromDate] = useState("");
   const [toDate, setToDate] = useState("");
+  const [selectedIds, setSelectedIds] = useState([]);
   const fromRef = useRef(null);
   const toRef = useRef(null);
 
@@ -106,6 +108,23 @@ export default function ComplaintList() {
       setComplaints(results);
     } catch (err) {
       console.error("Search failed", err);
+    }
+  }
+
+  async function handleDownloadCsv(ids) {
+    try {
+      const blob = await downloadComplaintsCsv(ids);
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `complaints_export_${new Date().toISOString().split("T")[0]}.csv`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+    } catch (err) {
+      console.error("Download failed", err);
+      alert("Failed to download CSV");
     }
   }
 
@@ -246,14 +265,17 @@ export default function ComplaintList() {
                 : "View and manage all your complaints"}
             </p>
           </div>
-          {user.role === "CITIZEN" && (
-            <Link to="/complaints/new">
-              <Button size="lg" className="gap-2">
-                <Plus className="w-5 h-5" />
-                New Complaint
-              </Button>
-            </Link>
-          )}
+          <Button
+            variant="outline"
+            size="lg"
+            className="gap-2"
+            onClick={() => handleDownloadCsv(selectedIds)}
+          >
+            <FileText className="w-5 h-5" />
+            {selectedIds.length > 0
+              ? `Download Selected (${selectedIds.length})`
+              : "Download All"}
+          </Button>
         </div>
 
         <Card className="mb-4 border-0 shadow-md">
@@ -427,6 +449,23 @@ export default function ComplaintList() {
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="border-b border-gray-200 bg-gray-50/50">
+                      <th className="text-left py-2.5 px-3 font-semibold text-gray-600 w-10">
+                        <input
+                          type="checkbox"
+                          className="rounded border-gray-300 text-violet-600 focus:ring-violet-500"
+                          checked={
+                            filteredComplaints.length > 0 &&
+                            selectedIds.length === filteredComplaints.length
+                          }
+                          onChange={(e) => {
+                            if (e.target.checked) {
+                              setSelectedIds(filteredComplaints.map((c) => c.id));
+                            } else {
+                              setSelectedIds([]);
+                            }
+                          }}
+                        />
+                      </th>
                       <th className="text-left py-2.5 px-3 font-semibold text-gray-600">
                         ID
                       </th>
@@ -459,6 +498,22 @@ export default function ComplaintList() {
                         key={complaint.id}
                         className="border-b border-gray-100 hover:bg-gray-50/80 transition-colors"
                       >
+                        <td className="py-2.5 px-3">
+                          <input
+                            type="checkbox"
+                            className="rounded border-gray-300 text-violet-600 focus:ring-violet-500"
+                            checked={selectedIds.includes(complaint.id)}
+                            onChange={(e) => {
+                              if (e.target.checked) {
+                                setSelectedIds([...selectedIds, complaint.id]);
+                              } else {
+                                setSelectedIds(
+                                  selectedIds.filter((id) => id !== complaint.id)
+                                );
+                              }
+                            }}
+                          />
+                        </td>
                         <td className="py-2.5 px-3 font-medium text-gray-900">
                           #{complaint.id}
                         </td>
