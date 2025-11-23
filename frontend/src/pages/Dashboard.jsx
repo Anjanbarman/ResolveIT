@@ -237,6 +237,12 @@ export default function Dashboard() {
                   My Complaints
                 </Button>
               </Link>
+              <Link to="/profile">
+                <Button variant="ghost" className="gap-2">
+                  <User className="w-4 h-4" />
+                  Profile
+                </Button>
+              </Link>
               <Button
                 variant="outline"
                 onClick={handleLogout}

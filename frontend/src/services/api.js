@@ -331,7 +331,36 @@ export async function downloadComplaintsPdf(ids = []) {
         throw new Error("Failed to download PDF: " + text);
       }
     }
-    throw new Error(error.message || "Failed to download PDF");
   }
 }
 
+// User Profile APIs
+export async function getUserProfile() {
+  try {
+    const { data } = await api.get("/users/profile");
+    return data;
+  } catch (error) {
+    throw new Error(error.message || "Failed to fetch user profile");
+  }
+}
+
+export async function updateUserProfile({ name, email }) {
+  try {
+    const { data } = await api.put("/users/profile", { name, email });
+    return data;
+  } catch (error) {
+    throw new Error(error.message || "Failed to update profile");
+  }
+}
+
+export async function changePassword({ oldPassword, newPassword }) {
+  try {
+    const { data } = await api.put("/users/password", {
+      oldPassword,
+      newPassword,
+    });
+    return data;
+  } catch (error) {
+    throw new Error(error.message || "Failed to change password");
+  }
+}
