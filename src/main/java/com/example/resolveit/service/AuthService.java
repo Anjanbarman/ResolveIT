@@ -23,25 +23,39 @@ public class AuthService {
     private final JwtTokenProvider jwtTokenProvider;
 
     @SuppressWarnings("null")
-    public User signup(String name, String email, String rawPassword, UserRole role) {
+    public User signup(String name, String email, String rawPassword, UserRole role, String phoneNumber) {
         if (userRepository.existsByEmail(email)) {
             throw new IllegalArgumentException("Email already in use");
         }
+
+        // Check if phone number is already in use (if provided)
+        if (phoneNumber != null && !phoneNumber.isEmpty()) {
+            if (userRepository.findByPhoneNumber(phoneNumber).isPresent()) {
+                throw new IllegalArgumentException("Phone number already in use");
+            }
+        }
+
         User user = User.builder()
                 .name(name)
                 .email(email)
                 .password(passwordEncoder.encode(rawPassword))
                 .role(role != null ? role : UserRole.CITIZEN)
+                .phoneNumber(phoneNumber)
+                .phoneVerified(phoneNumber != null && !phoneNumber.isEmpty())
                 .build();
         return userRepository.save(user);
     }
 
     public Map<String, Object> login(String email, String password) {
+        // Check if user exists first
+        if (!userRepository.existsByEmail(email)) {
+            throw new BadCredentialsException("User not found with email: " + email);
+        }
         try {
             authenticationManager.authenticate(
                     new UsernamePasswordAuthenticationToken(email, password));
         } catch (Exception e) {
-            throw new BadCredentialsException("Invalid credentials");
+            throw new BadCredentialsException("Invalid password");
         }
         String token = jwtTokenProvider.generateToken(email);
         User user = userRepository.findByEmail(email).orElseThrow();

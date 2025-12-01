@@ -20,13 +20,14 @@ public class AuthController {
     @PostMapping("/signup")
     public ResponseEntity<?> signup(@RequestBody SignupRequest request) {
         try {
-            User user = authService.signup(request.getName(), request.getEmail(), request.getPassword(), request.getRole());
+            User user = authService.signup(request.getName(), request.getEmail(), request.getPassword(),
+                    request.getRole(), request.getPhoneNumber());
             return ResponseEntity.ok(Map.of(
                     "id", user.getId(),
                     "name", user.getName(),
                     "email", user.getEmail(),
-                    "role", user.getRole().toString()
-            ));
+                    "role", user.getRole().toString(),
+                    "phoneVerified", user.getPhoneVerified() != null ? user.getPhoneVerified() : false));
         } catch (IllegalArgumentException ex) {
             return ResponseEntity.status(409).body(Map.of("message", ex.getMessage()));
         }
@@ -38,7 +39,7 @@ public class AuthController {
             Map<String, Object> result = authService.login(request.getEmail(), request.getPassword());
             return ResponseEntity.ok(result);
         } catch (org.springframework.security.authentication.BadCredentialsException ex) {
-            return ResponseEntity.status(401).body(Map.of("message", "Invalid credentials"));
+            return ResponseEntity.status(401).body(Map.of("message", ex.getMessage()));
         }
     }
 
@@ -48,6 +49,7 @@ public class AuthController {
         private String email;
         private String password;
         private UserRole role;
+        private String phoneNumber;
     }
 
     @Data

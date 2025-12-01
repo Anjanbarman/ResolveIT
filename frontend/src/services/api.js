@@ -364,3 +364,43 @@ export async function changePassword({ oldPassword, newPassword }) {
     throw new Error(error.message || "Failed to change password");
   }
 }
+
+// OTP APIs for Indian phone number verification
+export async function sendOtp(phoneNumber) {
+  try {
+    const { data } = await api.post("/otp/send", { phoneNumber });
+    return data;
+  } catch (error) {
+    throw new Error(error.message || "Failed to send OTP");
+  }
+}
+
+export async function verifyOtp(phoneNumber, otpCode) {
+  try {
+    const { data } = await api.post("/otp/verify", { phoneNumber, otpCode });
+    return data;
+  } catch (error) {
+    throw new Error(error.message || "Failed to verify OTP");
+  }
+}
+
+export async function verifyOtpAndLink(phoneNumber, otpCode) {
+  try {
+    const { data } = await api.post("/otp/verify-and-link", {
+      phoneNumber,
+      otpCode,
+    });
+    return data;
+  } catch (error) {
+    throw new Error(error.message || "Failed to verify and link phone number");
+  }
+}
+
+export async function validatePhoneNumber(phoneNumber) {
+  try {
+    const { data } = await api.post("/otp/validate", { phoneNumber });
+    return data;
+  } catch (error) {
+    throw new Error(error.message || "Failed to validate phone number");
+  }
+}

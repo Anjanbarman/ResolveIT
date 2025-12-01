@@ -8,6 +8,8 @@ import {
   saveUser,
   clearToken,
   clearUser,
+  sendOtp,
+  verifyOtpAndLink,
 } from "../services/api";
 import { Button } from "../components/ui/button";
 import {
@@ -30,6 +32,8 @@ import {
   CheckCircle,
   ArrowLeft,
   LogOut,
+  Phone,
+  Smartphone,
 } from "lucide-react";
 
 export default function UserProfile() {
@@ -37,13 +41,13 @@ export default function UserProfile() {
   const user = getUser();
   const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
-  
+
   // Profile form state
   const [profileForm, setProfileForm] = useState({ name: "", email: "" });
   const [profileLoading, setProfileLoading] = useState(false);
   const [profileError, setProfileError] = useState("");
   const [profileSuccess, setProfileSuccess] = useState("");
-  
+
   // Password form state
   const [passwordForm, setPasswordForm] = useState({
     oldPassword: "",
@@ -53,6 +57,14 @@ export default function UserProfile() {
   const [passwordLoading, setPasswordLoading] = useState(false);
   const [passwordError, setPasswordError] = useState("");
   const [passwordSuccess, setPasswordSuccess] = useState("");
+
+  // Phone verification state
+  const [phoneForm, setPhoneForm] = useState({ phoneNumber: "" });
+  const [otpCode, setOtpCode] = useState("");
+  const [otpSent, setOtpSent] = useState(false);
+  const [phoneLoading, setPhoneLoading] = useState(false);
+  const [phoneError, setPhoneError] = useState("");
+  const [phoneSuccess, setPhoneSuccess] = useState("");
 
   useEffect(() => {
     if (!user) {
@@ -90,7 +102,7 @@ export default function UserProfile() {
       const updatedProfile = await updateUserProfile(profileForm);
       setProfile(updatedProfile);
       setProfileSuccess("Profile updated successfully!");
-      
+
       // Update local storage with new user data
       const updatedUser = {
         id: updatedProfile.id,
@@ -99,11 +111,13 @@ export default function UserProfile() {
         role: updatedProfile.role,
       };
       saveUser(updatedUser);
-      
+
       // If email changed, inform user they may need to re-login
       if (profileForm.email !== user.email) {
         setTimeout(() => {
-          alert("Email updated! Please note that you'll need to use the new email for your next login.");
+          alert(
+            "Email updated! Please note that you'll need to use the new email for your next login."
+          );
         }, 500);
       }
     } catch (err) {
@@ -150,6 +164,64 @@ export default function UserProfile() {
     }
   }
 
+  // Validate Indian phone number (10 digits starting with 6-9)
+  function isValidIndianPhone(phone) {
+    const cleaned = phone.replace(/^(\+91|91)/, "").trim();
+    return /^[6-9]\d{9}$/.test(cleaned);
+  }
+
+  async function handleSendOtp(e) {
+    e.preventDefault();
+    setPhoneError("");
+    setPhoneSuccess("");
+
+    const cleaned = phoneForm.phoneNumber.replace(/^(\+91|91)/, "").trim();
+    if (!isValidIndianPhone(cleaned)) {
+      setPhoneError(
+        "Please enter a valid 10-digit Indian mobile number (starting with 6-9)"
+      );
+      return;
+    }
+
+    setPhoneLoading(true);
+    try {
+      const result = await sendOtp(cleaned);
+      setPhoneSuccess(result.message || "OTP sent successfully!");
+      setOtpSent(true);
+    } catch (err) {
+      setPhoneError(err.message);
+    } finally {
+      setPhoneLoading(false);
+    }
+  }
+
+  async function handleVerifyOtp(e) {
+    e.preventDefault();
+    setPhoneError("");
+    setPhoneSuccess("");
+
+    if (!otpCode || otpCode.length !== 6) {
+      setPhoneError("Please enter a valid 6-digit OTP");
+      return;
+    }
+
+    setPhoneLoading(true);
+    try {
+      const cleaned = phoneForm.phoneNumber.replace(/^(\+91|91)/, "").trim();
+      const result = await verifyOtpAndLink(cleaned, otpCode);
+      setPhoneSuccess(result.message || "Phone number verified successfully!");
+      // Reload profile to get updated phone info
+      await loadProfile();
+      setOtpSent(false);
+      setOtpCode("");
+      setPhoneForm({ phoneNumber: "" });
+    } catch (err) {
+      setPhoneError(err.message);
+    } finally {
+      setPhoneLoading(false);
+    }
+  }
+
   if (!user) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
@@ -191,7 +263,11 @@ export default function UserProfile() {
                   Back
                 </Button>
               </Link>
-              <Button variant="outline" onClick={handleLogout} className="gap-2">
+              <Button
+                variant="outline"
+                onClick={handleLogout}
+                className="gap-2"
+              >
                 <LogOut className="w-4 h-4" />
                 Logout
               </Button>
@@ -263,6 +339,22 @@ export default function UserProfile() {
                     </p>
                   </div>
                 </div>
+                <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
+                  <Phone className="w-5 h-5 text-gray-600" />
+                  <div>
+                    <p className="text-sm text-gray-600">Phone Number</p>
+                    <p className="font-medium text-gray-900 flex items-center gap-2">
+                      {profile?.phoneNumber
+                        ? `+91${profile.phoneNumber}`
+                        : "Not verified"}
+                      {profile?.phoneVerified && (
+                        <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800">
+                          <CheckCircle className="w-3 h-3 mr-1" /> Verified
+                        </span>
+                      )}
+                    </p>
+                  </div>
+                </div>
               </div>
             </CardContent>
           </Card>
@@ -274,7 +366,9 @@ export default function UserProfile() {
                 <UserIcon className="w-5 h-5 text-violet-600" />
                 Edit Profile
               </CardTitle>
-              <CardDescription>Update your personal information</CardDescription>
+              <CardDescription>
+                Update your personal information
+              </CardDescription>
             </CardHeader>
             <CardContent>
               <form onSubmit={handleProfileSubmit} className="space-y-4">
@@ -317,12 +411,157 @@ export default function UserProfile() {
                   />
                 </div>
 
-                <Button type="submit" disabled={profileLoading} className="w-full">
+                <Button
+                  type="submit"
+                  disabled={profileLoading}
+                  className="w-full"
+                >
                   {profileLoading ? "Updating..." : "Update Profile"}
                 </Button>
               </form>
             </CardContent>
           </Card>
+
+          {/* Phone Verification Form */}
+          {!profile?.phoneVerified && (
+            <Card className="border-0 shadow-md">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Smartphone className="w-5 h-5 text-violet-600" />
+                  Verify Phone Number
+                </CardTitle>
+                <CardDescription>
+                  Verify your Indian mobile number for enhanced security
+                  (10-digit number starting with 6-9)
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                {!otpSent ? (
+                  <form onSubmit={handleSendOtp} className="space-y-4">
+                    {phoneError && (
+                      <Alert variant="destructive">
+                        <AlertCircle className="h-4 w-4" />
+                        <AlertDescription>{phoneError}</AlertDescription>
+                      </Alert>
+                    )}
+                    {phoneSuccess && (
+                      <Alert className="border-green-200 bg-green-50 text-green-800">
+                        <CheckCircle className="h-4 w-4" />
+                        <AlertDescription>{phoneSuccess}</AlertDescription>
+                      </Alert>
+                    )}
+
+                    <div className="space-y-2">
+                      <Label htmlFor="phoneNumber">Mobile Number</Label>
+                      <div className="flex gap-2">
+                        <div className="flex items-center px-3 bg-gray-100 border border-r-0 rounded-l-md text-gray-600 text-sm">
+                          +91
+                        </div>
+                        <Input
+                          id="phoneNumber"
+                          type="tel"
+                          placeholder="9876543210"
+                          value={phoneForm.phoneNumber}
+                          onChange={(e) =>
+                            setPhoneForm({
+                              phoneNumber: e.target.value
+                                .replace(/\D/g, "")
+                                .slice(0, 10),
+                            })
+                          }
+                          className="rounded-l-none"
+                          maxLength={10}
+                          required
+                        />
+                      </div>
+                      <p className="text-xs text-gray-500">
+                        Enter your 10-digit Indian mobile number
+                      </p>
+                    </div>
+
+                    <Button
+                      type="submit"
+                      disabled={phoneLoading}
+                      className="w-full"
+                    >
+                      {phoneLoading ? "Sending OTP..." : "Send OTP"}
+                    </Button>
+                  </form>
+                ) : (
+                  <form onSubmit={handleVerifyOtp} className="space-y-4">
+                    {phoneError && (
+                      <Alert variant="destructive">
+                        <AlertCircle className="h-4 w-4" />
+                        <AlertDescription>{phoneError}</AlertDescription>
+                      </Alert>
+                    )}
+                    {phoneSuccess && (
+                      <Alert className="border-green-200 bg-green-50 text-green-800">
+                        <CheckCircle className="h-4 w-4" />
+                        <AlertDescription>{phoneSuccess}</AlertDescription>
+                      </Alert>
+                    )}
+
+                    <div className="p-3 bg-violet-50 rounded-lg text-sm text-violet-700">
+                      OTP sent to +91{phoneForm.phoneNumber}. Valid for 5
+                      minutes.
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="otpCode">Enter OTP</Label>
+                      <Input
+                        id="otpCode"
+                        type="text"
+                        placeholder="Enter 6-digit OTP"
+                        value={otpCode}
+                        onChange={(e) =>
+                          setOtpCode(
+                            e.target.value.replace(/\D/g, "").slice(0, 6)
+                          )
+                        }
+                        maxLength={6}
+                        className="text-center text-lg tracking-widest"
+                        required
+                      />
+                    </div>
+
+                    <div className="flex gap-2">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() => {
+                          setOtpSent(false);
+                          setOtpCode("");
+                          setPhoneError("");
+                          setPhoneSuccess("");
+                        }}
+                        className="flex-1"
+                      >
+                        Change Number
+                      </Button>
+                      <Button
+                        type="submit"
+                        disabled={phoneLoading}
+                        className="flex-1"
+                      >
+                        {phoneLoading ? "Verifying..." : "Verify OTP"}
+                      </Button>
+                    </div>
+
+                    <Button
+                      type="button"
+                      variant="link"
+                      onClick={handleSendOtp}
+                      disabled={phoneLoading}
+                      className="w-full text-sm"
+                    >
+                      Resend OTP
+                    </Button>
+                  </form>
+                )}
+              </CardContent>
+            </Card>
+          )}
 
           {/* Change Password Form */}
           <Card className="border-0 shadow-md">
@@ -403,7 +642,11 @@ export default function UserProfile() {
                   />
                 </div>
 
-                <Button type="submit" disabled={passwordLoading} className="w-full">
+                <Button
+                  type="submit"
+                  disabled={passwordLoading}
+                  className="w-full"
+                >
                   {passwordLoading ? "Changing Password..." : "Change Password"}
                 </Button>
               </form>
