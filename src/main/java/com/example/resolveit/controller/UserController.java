@@ -23,12 +23,14 @@ public class UserController {
         try {
             String email = authentication.getName();
             User user = userService.getUserByEmail(email);
-            return ResponseEntity.ok(Map.of(
-                    "id", user.getId(),
-                    "name", user.getName(),
-                    "email", user.getEmail(),
-                    "role", user.getRole().toString()
-            ));
+            java.util.Map<String, Object> response = new java.util.HashMap<>();
+            response.put("id", user.getId());
+            response.put("name", user.getName());
+            response.put("email", user.getEmail());
+            response.put("role", user.getRole().toString());
+            response.put("phoneNumber", user.getPhoneNumber());
+            response.put("phoneVerified", user.getPhoneVerified());
+            return ResponseEntity.ok(response);
         } catch (Exception e) {
             return ResponseEntity.status(404).body(Map.of("message", "User not found"));
         }
@@ -43,15 +45,16 @@ public class UserController {
             User user = userService.updateUserProfile(
                     currentEmail,
                     request.getName(),
-                    request.getEmail()
-            );
-            return ResponseEntity.ok(Map.of(
-                    "id", user.getId(),
-                    "name", user.getName(),
-                    "email", user.getEmail(),
-                    "role", user.getRole().toString(),
-                    "message", "Profile updated successfully"
-            ));
+                    request.getEmail());
+            java.util.Map<String, Object> response = new java.util.HashMap<>();
+            response.put("id", user.getId());
+            response.put("name", user.getName());
+            response.put("email", user.getEmail());
+            response.put("role", user.getRole().toString());
+            response.put("phoneNumber", user.getPhoneNumber());
+            response.put("phoneVerified", user.getPhoneVerified());
+            response.put("message", "Profile updated successfully");
+            return ResponseEntity.ok(response);
         } catch (IllegalArgumentException e) {
             return ResponseEntity.status(400).body(Map.of("message", e.getMessage()));
         } catch (Exception e) {

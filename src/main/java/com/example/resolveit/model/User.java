@@ -26,6 +26,13 @@ public class User {
     @Column(nullable = false)
     private String password;
 
+    @Column(unique = true)
+    private String phoneNumber;
+
+    @Column(nullable = false)
+    @Builder.Default
+    private Boolean phoneVerified = false;
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     @Builder.Default
