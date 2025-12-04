@@ -1,15 +1,16 @@
 import { useNavigate } from "react-router-dom";
 import { Button } from "../components/ui/button";
-import { 
-  FileText, 
-  CheckCircle, 
-  Clock, 
-  Users, 
-  BarChart3, 
+import {
+  FileText,
+  CheckCircle,
+  Clock,
+  Users,
+  BarChart3,
   Shield,
   ArrowRight,
   Zap,
-  Globe
+  Globe,
+  UserX,
 } from "lucide-react";
 
 export default function LandingPage() {
@@ -19,33 +20,39 @@ export default function LandingPage() {
     {
       icon: FileText,
       title: "Seamless Complaint Management",
-      description: "Track and resolve citizen complaints with an intuitive, streamlined workflow."
+      description:
+        "Track and resolve citizen complaints with an intuitive, streamlined workflow.",
     },
     {
       icon: Clock,
       title: "Real-Time Updates",
-      description: "Keep citizens informed with automatic status updates and transparent timelines."
+      description:
+        "Keep citizens informed with automatic status updates and transparent timelines.",
     },
     {
       icon: Users,
       title: "Role-Based Access",
-      description: "Empower your team with specialized views for citizens, officers, and administrators."
+      description:
+        "Empower your team with specialized views for citizens, officers, and administrators.",
     },
     {
       icon: BarChart3,
       title: "Analytics & Insights",
-      description: "Make data-driven decisions with comprehensive dashboards and reporting tools."
+      description:
+        "Make data-driven decisions with comprehensive dashboards and reporting tools.",
     },
     {
       icon: Shield,
       title: "Secure & Compliant",
-      description: "Enterprise-grade security ensuring data protection and regulatory compliance."
+      description:
+        "Enterprise-grade security ensuring data protection and regulatory compliance.",
     },
     {
       icon: Zap,
       title: "Lightning Fast",
-      description: "Optimized performance delivering instant responses and seamless experiences."
-    }
+      description:
+        "Optimized performance delivering instant responses and seamless experiences.",
+    },
   ];
 
   return (
@@ -63,14 +70,22 @@ export default function LandingPage() {
               </span>
             </div>
             <div className="flex items-center gap-4">
-              <Button 
-                variant="ghost" 
+              <Button
+                variant="ghost"
+                onClick={() => navigate("/anonymous")}
+                className="text-violet-600 hover:text-purple-700 hover:bg-violet-50"
+              >
+                <UserX className="w-4 h-4 mr-1" />
+                Anonymous
+              </Button>
+              <Button
+                variant="ghost"
                 onClick={() => navigate("/login")}
                 className="text-gray-700 hover:text-violet-600"
               >
                 Login
               </Button>
-              <Button 
+              <Button
                 onClick={() => navigate("/signup")}
                 className="bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-700 hover:to-purple-700 text-white"
               >
@@ -96,23 +111,32 @@ export default function LandingPage() {
               </span>
             </h1>
             <p className="text-lg md:text-xl text-gray-600 mb-8 leading-relaxed">
-              The comprehensive platform that empowers organizations to manage, 
-              track, and resolve citizen complaints with unprecedented efficiency and transparency.
+              The comprehensive platform that empowers organizations to manage,
+              track, and resolve citizen complaints with unprecedented
+              efficiency and transparency.
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              <Button 
+              <Button
                 onClick={() => navigate("/signup")}
                 className="bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-700 hover:to-purple-700 text-white px-6 py-3"
               >
                 Start Free Trial
                 <ArrowRight className="w-4 h-4 ml-2" />
               </Button>
-              <Button 
+              <Button
                 variant="outline"
                 onClick={() => navigate("/login")}
                 className="border-2 border-gray-300 hover:border-violet-600 text-gray-700 hover:text-violet-600 px-6 py-3"
               >
                 Sign In
+              </Button>
+              <Button
+                variant="outline"
+                onClick={() => navigate("/anonymous")}
+                className="border-2 border-violet-300 hover:border-purple-500 text-violet-600 hover:text-purple-700 hover:bg-violet-50 px-6 py-3"
+              >
+                <UserX className="w-4 h-4 mr-2" />
+                Anonymous Complaint
               </Button>
             </div>
           </div>
@@ -127,12 +151,13 @@ export default function LandingPage() {
               Everything You Need to Succeed
             </h2>
             <p className="text-lg text-gray-600 max-w-3xl mx-auto">
-              Built for organizations that demand excellence in public service delivery
+              Built for organizations that demand excellence in public service
+              delivery
             </p>
           </div>
           <div className="grid md:grid-cols-2 gap-8 max-w-5xl mx-auto">
             {features.map((feature, index) => (
-              <div 
+              <div
                 key={index}
                 className="bg-white p-8 rounded-2xl shadow-sm hover:shadow-lg transition-all duration-300 border border-gray-100 hover:border-violet-200"
               >
@@ -161,7 +186,9 @@ export default function LandingPage() {
             </div>
             <div>
               <div className="text-5xl font-bold mb-2">100+</div>
-              <div className="text-violet-200 text-lg">Complaints Resolved Monthly</div>
+              <div className="text-violet-200 text-lg">
+                Complaints Resolved Monthly
+              </div>
             </div>
             <div>
               <div className="text-5xl font-bold mb-2">24/7</div>
@@ -178,10 +205,11 @@ export default function LandingPage() {
             Ready to Transform Your Operations?
           </h2>
           <p className="text-lg text-gray-600 mb-6">
-            Join leading organizations worldwide in delivering exceptional citizen service
+            Join leading organizations worldwide in delivering exceptional
+            citizen service
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <Button 
+            <Button
               onClick={() => navigate("/signup")}
               className="bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-700 hover:to-purple-700 text-white px-6 py-3"
             >
@@ -204,7 +232,8 @@ export default function LandingPage() {
             </div>
             <div className="text-center md:text-left">
               <p className="text-sm">
-                © 2025 ResolveIT. All rights reserved. | Enterprise Complaint Management Platform
+                © 2025 ResolveIT. All rights reserved. | Enterprise Complaint
+                Management Platform
               </p>
             </div>
           </div>
