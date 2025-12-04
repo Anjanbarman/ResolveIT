@@ -70,6 +70,30 @@ export async function createComplaint(formData) {
   }
 }
 
+// Anonymous complaint tracking - no authentication required
+export async function trackAnonymousComplaint(trackingId) {
+  try {
+    const { data } = await axios.get(`/api/anonymous/track/${trackingId}`);
+    return data;
+  } catch (error) {
+    throw new Error(
+      error.response?.data?.message ||
+        "Complaint not found. Please check your tracking ID."
+    );
+  }
+}
+
+export async function getComplaintCategories() {
+  try {
+    const { data } = await axios.get("/api/anonymous/categories");
+    return data;
+  } catch (error) {
+    throw new Error(
+      error.response?.data?.message || "Failed to load categories"
+    );
+  }
+}
+
 export async function getComplaints() {
   try {
     const { data } = await api.get("/complaints");

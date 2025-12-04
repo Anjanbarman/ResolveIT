@@ -7,6 +7,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
+import java.util.Optional;
 
 @Repository
 public interface ComplaintRepository extends JpaRepository<Complaint, Long> {
@@ -22,5 +23,9 @@ public interface ComplaintRepository extends JpaRepository<Complaint, Long> {
 
     Complaint findByTrackingId(String trackingId);
 
+    Optional<Complaint> findOptionalByTrackingId(String trackingId);
+
     Complaint findByAttachmentPath(String attachmentPath);
+
+    boolean existsByTrackingId(String trackingId);
 }
