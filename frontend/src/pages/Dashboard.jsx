@@ -23,6 +23,7 @@ import {
   CategoryBarChart,
   PriorityBarChart,
 } from "../components/Charts";
+import NotificationDropdown from "../components/NotificationDropdown";
 import {
   FileText,
   Plus,
@@ -243,6 +244,7 @@ export default function Dashboard() {
                   Profile
                 </Button>
               </Link>
+              <NotificationDropdown />
               <Button
                 variant="outline"
                 onClick={handleLogout}

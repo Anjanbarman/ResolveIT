@@ -28,6 +28,7 @@ public class ComplaintService {
     private final UserRepository userRepository;
     private final InternalNoteRepository internalNoteRepository;
     private final PublicUpdateRepository publicUpdateRepository;
+    private final NotificationService notificationService;
     private static final String UPLOAD_DIR = "uploads/complaints";
 
     public Complaint createComplaint(String title, String description, ComplaintCategory category,
@@ -69,7 +70,13 @@ public class ComplaintService {
             complaint.setAttachmentPath(filename);
         }
 
-        return complaintRepository.save(complaint);
+        Complaint saved = complaintRepository.save(complaint);
+
+        // Notify all admins about the new complaint
+        List<User> admins = userRepository.findByRole(UserRole.ADMIN);
+        notificationService.notifyNewComplaint(saved, admins);
+
+        return saved;
     }
 
     public List<Complaint> getAllComplaints(Authentication authentication) {
@@ -169,6 +176,8 @@ public class ComplaintService {
         String email = authentication.getName();
         User user = userRepository.findByEmail(email).orElseThrow();
 
+        ComplaintStatus oldStatus = complaint.getStatus();
+
         if (user.getRole() == UserRole.OFFICER) {
             if (complaint.getAssignedOfficer() == null
                     || !complaint.getAssignedOfficer().getId().equals(user.getId())) {
@@ -182,6 +191,10 @@ public class ComplaintService {
                 throw new IllegalArgumentException("Complaint must be IN_PROGRESS to be completed by officer");
             }
             complaint.setStatus(ComplaintStatus.COMPLETED);
+
+            // Notify admins that complaint is ready for review
+            List<User> admins = userRepository.findByRole(UserRole.ADMIN);
+            notificationService.notifyAdminComplaintCompleted(complaint, admins);
         } else if (user.getRole() == UserRole.ADMIN) {
             // Admin can mark as RESOLVED (after officer completion) or REJECTED
             if (status == ComplaintStatus.RESOLVED) {
@@ -216,7 +229,12 @@ public class ComplaintService {
             throw new IllegalArgumentException("Access denied");
         }
 
-        return complaintRepository.save(complaint);
+        Complaint saved = complaintRepository.save(complaint);
+
+        // Notify citizen about status change
+        notificationService.notifyStatusChange(saved, oldStatus, saved.getStatus());
+
+        return saved;
     }
 
     public Complaint assignOfficer(Long complaintId, Long officerId, LocalDate targetResolutionDate,
@@ -240,6 +258,7 @@ public class ComplaintService {
             throw new IllegalArgumentException("Selected user is not an officer");
         }
 
+        ComplaintStatus oldStatus = complaint.getStatus();
         complaint.setAssignedOfficer(officer);
         complaint.setTargetResolutionDate(targetResolutionDate);
         if (complaint.getStatus() == ComplaintStatus.PENDING
@@ -247,7 +266,17 @@ public class ComplaintService {
                 || complaint.getStatus() == ComplaintStatus.REOPENED) {
             complaint.setStatus(ComplaintStatus.IN_PROGRESS);
         }
-        return complaintRepository.save(complaint);
+        Complaint saved = complaintRepository.save(complaint);
+
+        // Notify officer about assignment
+        notificationService.notifyOfficerAssignment(saved, officer);
+
+        // Notify citizen about status change if status changed
+        if (oldStatus != saved.getStatus()) {
+            notificationService.notifyStatusChange(saved, oldStatus, saved.getStatus());
+        }
+
+        return saved;
     }
 
     public Complaint updateComplaintDeadline(Long complaintId, LocalDate targetResolutionDate,
@@ -280,11 +309,26 @@ public class ComplaintService {
             throw new IllegalArgumentException("Cannot unassign a resolved or rejected complaint");
         }
 
+        User previousOfficer = complaint.getAssignedOfficer();
+        ComplaintStatus oldStatus = complaint.getStatus();
+
         complaint.setAssignedOfficer(null);
         if (complaint.getStatus() == ComplaintStatus.IN_PROGRESS) {
             complaint.setStatus(ComplaintStatus.PENDING);
         }
-        return complaintRepository.save(complaint);
+        Complaint saved = complaintRepository.save(complaint);
+
+        // Notify officer about unassignment
+        if (previousOfficer != null) {
+            notificationService.notifyOfficerUnassignment(saved, previousOfficer);
+        }
+
+        // Notify citizen about status change if status changed
+        if (oldStatus != saved.getStatus()) {
+            notificationService.notifyStatusChange(saved, oldStatus, saved.getStatus());
+        }
+
+        return saved;
     }
 
     public List<User> getOfficers() {
@@ -349,6 +393,10 @@ public class ComplaintService {
 
         @SuppressWarnings("null")
         PublicUpdate saved = publicUpdateRepository.save(update);
+
+        // Notify citizen about the public update
+        notificationService.notifyPublicUpdate(complaint);
+
         return saved;
     }
 
@@ -424,7 +472,13 @@ public class ComplaintService {
             publicUpdateRepository.save(update);
         }
 
-        return complaintRepository.save(complaint);
+        Complaint saved = complaintRepository.save(complaint);
+
+        // Notify admins about reopened complaint
+        List<User> admins = userRepository.findByRole(UserRole.ADMIN);
+        notificationService.notifyAdminComplaintReopened(saved, admins);
+
+        return saved;
     }
 
     // In-memory search for simplicity

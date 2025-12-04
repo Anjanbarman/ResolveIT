@@ -404,3 +404,60 @@ export async function validatePhoneNumber(phoneNumber) {
     throw new Error(error.message || "Failed to validate phone number");
   }
 }
+
+// Notification APIs
+export async function getNotifications() {
+  try {
+    const { data } = await api.get("/notifications");
+    return data;
+  } catch (error) {
+    throw new Error(error.message || "Failed to fetch notifications");
+  }
+}
+
+export async function getUnreadNotifications() {
+  try {
+    const { data } = await api.get("/notifications/unread");
+    return data;
+  } catch (error) {
+    throw new Error(error.message || "Failed to fetch unread notifications");
+  }
+}
+
+export async function getUnreadNotificationCount() {
+  try {
+    const { data } = await api.get("/notifications/count");
+    return data.count;
+  } catch (error) {
+    throw new Error(error.message || "Failed to fetch notification count");
+  }
+}
+
+export async function markNotificationAsRead(notificationId) {
+  try {
+    const { data } = await api.post(`/notifications/${notificationId}/read`);
+    return data;
+  } catch (error) {
+    throw new Error(error.message || "Failed to mark notification as read");
+  }
+}
+
+export async function markAllNotificationsAsRead() {
+  try {
+    const { data } = await api.post("/notifications/read-all");
+    return data;
+  } catch (error) {
+    throw new Error(
+      error.message || "Failed to mark all notifications as read"
+    );
+  }
+}
+
+export async function deleteNotification(notificationId) {
+  try {
+    const { data } = await api.delete(`/notifications/${notificationId}`);
+    return data;
+  } catch (error) {
+    throw new Error(error.message || "Failed to delete notification");
+  }
+}
