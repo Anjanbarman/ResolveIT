@@ -19,6 +19,7 @@ import {
   CardTitle,
 } from "../components/ui/card";
 import { Alert, AlertDescription } from "../components/ui/alert";
+import NotificationDropdown from "../components/NotificationDropdown";
 import {
   FileText,
   Plus,
@@ -114,6 +115,7 @@ export default function NewComplaint() {
                     My Complaints
                   </Button>
                 </Link>
+                <NotificationDropdown />
                 <Button
                   variant="outline"
                   onClick={handleLogout}
@@ -198,6 +200,7 @@ export default function NewComplaint() {
                   My Complaints
                 </Button>
               </Link>
+              <NotificationDropdown />
               <Button
                 variant="outline"
                 onClick={handleLogout}

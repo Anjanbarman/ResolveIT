@@ -22,6 +22,7 @@ import {
 import { Input } from "../components/ui/input";
 import { Label } from "../components/ui/label";
 import { Alert, AlertDescription } from "../components/ui/alert";
+import NotificationDropdown from "../components/NotificationDropdown";
 import {
   FileText,
   User as UserIcon,
@@ -263,6 +264,7 @@ export default function UserProfile() {
                   Back
                 </Button>
               </Link>
+              <NotificationDropdown />
               <Button
                 variant="outline"
                 onClick={handleLogout}

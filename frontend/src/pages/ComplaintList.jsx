@@ -18,6 +18,7 @@ import {
   CardTitle,
 } from "../components/ui/card";
 import { Badge } from "../components/ui/badge";
+import NotificationDropdown from "../components/NotificationDropdown";
 import {
   FileText,
   Plus,
@@ -83,12 +84,12 @@ export default function ComplaintList() {
   // Close dropdown when clicking outside
   useEffect(() => {
     const handleClickOutside = (event) => {
-      if (showDownloadMenu && !event.target.closest('.relative')) {
+      if (showDownloadMenu && !event.target.closest(".relative")) {
         setShowDownloadMenu(false);
       }
     };
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [showDownloadMenu]);
 
   async function loadComplaints() {
@@ -130,7 +131,9 @@ export default function ComplaintList() {
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = `complaints_export_${new Date().toISOString().split("T")[0]}.csv`;
+      a.download = `complaints_export_${
+        new Date().toISOString().split("T")[0]
+      }.csv`;
       document.body.appendChild(a);
       a.click();
       window.URL.revokeObjectURL(url);
@@ -147,7 +150,9 @@ export default function ComplaintList() {
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = `complaints_export_${new Date().toISOString().split("T")[0]}.pdf`;
+      a.download = `complaints_export_${
+        new Date().toISOString().split("T")[0]
+      }.pdf`;
       document.body.appendChild(a);
       a.click();
       window.URL.revokeObjectURL(url);
@@ -268,6 +273,7 @@ export default function ComplaintList() {
                   My Complaints
                 </Button>
               </Link>
+              <NotificationDropdown />
               <Button
                 variant="outline"
                 onClick={handleLogout}
@@ -320,7 +326,7 @@ export default function ComplaintList() {
                 />
               </svg>
             </Button>
-            
+
             {showDownloadMenu && (
               <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg border border-gray-200 z-50">
                 <div className="py-1">
@@ -531,7 +537,9 @@ export default function ComplaintList() {
                           }
                           onChange={(e) => {
                             if (e.target.checked) {
-                              setSelectedIds(filteredComplaints.map((c) => c.id));
+                              setSelectedIds(
+                                filteredComplaints.map((c) => c.id)
+                              );
                             } else {
                               setSelectedIds([]);
                             }
@@ -580,7 +588,9 @@ export default function ComplaintList() {
                                 setSelectedIds([...selectedIds, complaint.id]);
                               } else {
                                 setSelectedIds(
-                                  selectedIds.filter((id) => id !== complaint.id)
+                                  selectedIds.filter(
+                                    (id) => id !== complaint.id
+                                  )
                                 );
                               }
                             }}

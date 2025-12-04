@@ -38,6 +38,7 @@ import {
   DialogDescription,
   DialogFooter,
 } from "../components/ui/dialog";
+import NotificationDropdown from "../components/NotificationDropdown";
 import {
   FileText,
   Users,
@@ -319,6 +320,7 @@ export default function ComplaintDetails() {
                   My Complaints
                 </Button>
               </Link>
+              <NotificationDropdown />
               <Button
                 variant="outline"
                 onClick={handleLogout}
@@ -554,9 +556,11 @@ export default function ComplaintDetails() {
                       <div className="relative flex justify-between w-full">
                         {steps.map((step, idx) => {
                           const isDone =
-                          idx < current ||
-                          (idx === current && complaint.status === "RESOLVED");
-                          const isCurrent = idx === current && complaint.status !== "RESOLVED";
+                            idx < current ||
+                            (idx === current &&
+                              complaint.status === "RESOLVED");
+                          const isCurrent =
+                            idx === current && complaint.status !== "RESOLVED";
                           const isUpcoming = idx > current;
                           return (
                             <div
