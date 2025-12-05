@@ -10,6 +10,8 @@ import {
   unassignOfficer,
   addInternalNote,
   getInternalNotes,
+  updateInternalNote,
+  deleteInternalNote,
   addPublicUpdate,
   getPublicUpdates,
   updateComplaintStatus,
@@ -49,6 +51,8 @@ import {
   Home,
   Edit,
   XCircle,
+  Trash2,
+  Pencil,
 } from "lucide-react";
 
 export default function ComplaintDetails() {
@@ -74,6 +78,8 @@ export default function ComplaintDetails() {
   const [editDescription, setEditDescription] = useState("");
   const [editCategory, setEditCategory] = useState("");
   const [editPriority, setEditPriority] = useState("");
+  const [editingNoteId, setEditingNoteId] = useState(null);
+  const [editingNoteContent, setEditingNoteContent] = useState("");
 
   useEffect(() => {
     if (!user) {
@@ -220,6 +226,47 @@ export default function ComplaintDetails() {
     try {
       await addInternalNote(id, newInternalNote);
       setNewInternalNote("");
+      const notesData = await getInternalNotes(id);
+      setInternalNotes(notesData);
+    } catch (err) {
+      setError(err.message);
+    }
+  }
+
+  function startEditingNote(note) {
+    setEditingNoteId(note.id);
+    setEditingNoteContent(note.content);
+  }
+
+  function cancelEditingNote() {
+    setEditingNoteId(null);
+    setEditingNoteContent("");
+  }
+
+  async function handleUpdateInternalNote(e) {
+    e.preventDefault();
+    if (!editingNoteContent.trim()) return;
+    try {
+      await updateInternalNote(editingNoteId, editingNoteContent);
+      setEditingNoteId(null);
+      setEditingNoteContent("");
+      const notesData = await getInternalNotes(id);
+      setInternalNotes(notesData);
+    } catch (err) {
+      setError(err.message);
+    }
+  }
+
+  async function handleDeleteInternalNote(noteId) {
+    if (
+      !window.confirm(
+        "Are you sure you want to delete this note? This action cannot be undone."
+      )
+    ) {
+      return;
+    }
+    try {
+      await deleteInternalNote(noteId);
       const notesData = await getInternalNotes(id);
       setInternalNotes(notesData);
     } catch (err) {
@@ -861,30 +908,91 @@ export default function ComplaintDetails() {
                             key={note.id}
                             className="bg-gray-50 border border-gray-200 rounded-md p-3"
                           >
-                            <div className="flex justify-between items-start mb-1">
-                              <div>
-                                <p className="font-semibold text-sm text-gray-900">
-                                  {note.authorName}
-                                </p>
-                                <Badge className="bg-gray-200 text-gray-700 text-xs mt-1 border-0">
-                                  {note.authorRole}
-                                </Badge>
-                              </div>
-                              <p className="text-xs text-gray-500">
-                                {new Date(note.createdAt).toLocaleString(
-                                  "en-US",
-                                  {
-                                    month: "short",
-                                    day: "numeric",
-                                    hour: "2-digit",
-                                    minute: "2-digit",
+                            {editingNoteId === note.id ? (
+                              <form
+                                onSubmit={handleUpdateInternalNote}
+                                className="space-y-2"
+                              >
+                                <Textarea
+                                  value={editingNoteContent}
+                                  onChange={(e) =>
+                                    setEditingNoteContent(e.target.value)
                                   }
-                                )}
-                              </p>
-                            </div>
-                            <p className="text-gray-800 text-sm whitespace-pre-wrap mt-1">
-                              {note.content}
-                            </p>
+                                  rows={3}
+                                  className="resize-none text-sm"
+                                  autoFocus
+                                />
+                                <div className="flex gap-2">
+                                  <Button type="submit" size="sm">
+                                    Save
+                                  </Button>
+                                  <Button
+                                    type="button"
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={cancelEditingNote}
+                                  >
+                                    Cancel
+                                  </Button>
+                                </div>
+                              </form>
+                            ) : (
+                              <>
+                                <div className="flex justify-between items-start mb-1">
+                                  <div>
+                                    <p className="font-semibold text-sm text-gray-900">
+                                      {note.authorName}
+                                      {note.edited && (
+                                        <span className="text-xs text-gray-400 ml-2">
+                                          (edited)
+                                        </span>
+                                      )}
+                                    </p>
+                                    <Badge className="bg-gray-200 text-gray-700 text-xs mt-1 border-0">
+                                      {note.authorRole}
+                                    </Badge>
+                                  </div>
+                                  <div className="flex items-center gap-2">
+                                    <p className="text-xs text-gray-500">
+                                      {new Date(note.createdAt).toLocaleString(
+                                        "en-US",
+                                        {
+                                          month: "short",
+                                          day: "numeric",
+                                          hour: "2-digit",
+                                          minute: "2-digit",
+                                        }
+                                      )}
+                                    </p>
+                                    {note.authorId === user.id && (
+                                      <div className="flex gap-1">
+                                        <button
+                                          type="button"
+                                          onClick={() => startEditingNote(note)}
+                                          className="p-1 text-gray-400 hover:text-blue-600 transition-colors"
+                                          title="Edit note"
+                                        >
+                                          <Pencil className="w-3.5 h-3.5" />
+                                        </button>
+                                        <button
+                                          type="button"
+                                          onClick={() =>
+                                            handleDeleteInternalNote(note.id)
+                                          }
+                                          className="p-1 text-gray-400 hover:text-red-600 transition-colors"
+                                          title="Delete note"
+                                        >
+                                          <Trash2 className="w-3.5 h-3.5" />
+                                        </button>
+                                      </div>
+                                    )}
+                                  </div>
+                                </div>
+                                <p className="text-gray-800 text-sm whitespace-pre-wrap mt-1">
+                                  {note.content}
+                                </p>
+                              </>
+                            )}
                           </div>
                         ))}
                       </div>

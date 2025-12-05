@@ -231,6 +231,26 @@ export async function getInternalNotes(complaintId) {
   }
 }
 
+export async function updateInternalNote(noteId, content) {
+  try {
+    const { data } = await api.put(`/complaints/internal-notes/${noteId}`, {
+      content,
+    });
+    return data;
+  } catch (error) {
+    throw new Error(error.message || "Failed to update internal note");
+  }
+}
+
+export async function deleteInternalNote(noteId) {
+  try {
+    const { data } = await api.delete(`/complaints/internal-notes/${noteId}`);
+    return data;
+  } catch (error) {
+    throw new Error(error.message || "Failed to delete internal note");
+  }
+}
+
 export async function addPublicUpdate(complaintId, content) {
   try {
     const { data } = await api.post(

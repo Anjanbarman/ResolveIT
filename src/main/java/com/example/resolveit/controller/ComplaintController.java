@@ -181,12 +181,42 @@ public class ComplaintController {
                         dto.put("id", note.getId());
                         dto.put("content", note.getContent());
                         dto.put("authorName", note.getAuthor().getName());
+                        dto.put("authorId", note.getAuthor().getId());
                         dto.put("authorRole", note.getAuthor().getRole().toString());
                         dto.put("createdAt", note.getCreatedAt().toString());
+                        dto.put("edited", note.isEdited());
+                        if (note.getUpdatedAt() != null) {
+                            dto.put("updatedAt", note.getUpdatedAt().toString());
+                        }
                         return dto;
                     })
                     .collect(Collectors.toList());
             return ResponseEntity.ok(noteDtos);
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.status(400).body(Map.of("message", e.getMessage()));
+        }
+    }
+
+    @PutMapping("/internal-notes/{noteId}")
+    public ResponseEntity<?> updateInternalNote(
+            @PathVariable Long noteId,
+            @RequestBody NoteRequest request,
+            Authentication authentication) {
+        try {
+            complaintService.updateInternalNote(noteId, request.getContent(), authentication);
+            return ResponseEntity.ok(Map.of("message", "Internal note updated successfully"));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.status(400).body(Map.of("message", e.getMessage()));
+        }
+    }
+
+    @DeleteMapping("/internal-notes/{noteId}")
+    public ResponseEntity<?> deleteInternalNote(
+            @PathVariable Long noteId,
+            Authentication authentication) {
+        try {
+            complaintService.deleteInternalNote(noteId, authentication);
+            return ResponseEntity.ok(Map.of("message", "Internal note deleted successfully"));
         } catch (IllegalArgumentException e) {
             return ResponseEntity.status(400).body(Map.of("message", e.getMessage()));
         }
@@ -450,11 +480,9 @@ public class ComplaintController {
         private String feedback;
     }
 
-
-
-
     private String escapeCsv(Object value) {
-        if (value == null) return "";
+        if (value == null)
+            return "";
         String str = value.toString();
         if (str.contains(",") || str.contains("\"") || str.contains("\n")) {
             return "\"" + str.replace("\"", "\"\"") + "\"";
