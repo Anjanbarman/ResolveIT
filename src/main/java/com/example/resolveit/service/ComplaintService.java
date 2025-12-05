@@ -372,6 +372,46 @@ public class ComplaintService {
         return internalNoteRepository.findByComplaintOrderByCreatedAtAsc(complaint);
     }
 
+    public InternalNote updateInternalNote(Long noteId, String content, Authentication authentication) {
+        InternalNote note = internalNoteRepository.findById(noteId)
+                .orElseThrow(() -> new IllegalArgumentException("Internal note not found"));
+
+        String email = authentication.getName();
+        User user = userRepository.findByEmail(email).orElseThrow();
+
+        // Only the author can edit their own note, and must be admin or officer
+        if (!note.getAuthor().getId().equals(user.getId())) {
+            throw new IllegalArgumentException("You can only edit your own notes");
+        }
+
+        if (user.getRole() != UserRole.ADMIN && user.getRole() != UserRole.OFFICER) {
+            throw new IllegalArgumentException("Only admins and officers can edit internal notes");
+        }
+
+        note.setContent(content);
+        note.setEdited(true);
+        return internalNoteRepository.save(note);
+    }
+
+    public void deleteInternalNote(Long noteId, Authentication authentication) {
+        InternalNote note = internalNoteRepository.findById(noteId)
+                .orElseThrow(() -> new IllegalArgumentException("Internal note not found"));
+
+        String email = authentication.getName();
+        User user = userRepository.findByEmail(email).orElseThrow();
+
+        // Only the author can delete their own note, and must be admin or officer
+        if (!note.getAuthor().getId().equals(user.getId())) {
+            throw new IllegalArgumentException("You can only delete your own notes");
+        }
+
+        if (user.getRole() != UserRole.ADMIN && user.getRole() != UserRole.OFFICER) {
+            throw new IllegalArgumentException("Only admins and officers can delete internal notes");
+        }
+
+        internalNoteRepository.delete(note);
+    }
+
     public PublicUpdate addPublicUpdate(Long complaintId, String content, Authentication authentication) {
         Long safeComplaintId = java.util.Objects.requireNonNull(complaintId, "complaintId cannot be null");
         Complaint complaint = complaintRepository.findById(safeComplaintId)
