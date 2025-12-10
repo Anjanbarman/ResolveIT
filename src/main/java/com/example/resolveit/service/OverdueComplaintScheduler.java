@@ -12,7 +12,6 @@ public class OverdueComplaintScheduler {
 
     private final ComplaintService complaintService;
 
-    // Run hourly to mark overdue complaints as UNRESOLVED
     @Scheduled(cron = "0 0 * * * *")
     public void markOverdue() {
         int changed = complaintService.markOverdueUnresolved();

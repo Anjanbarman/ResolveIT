@@ -43,7 +43,6 @@ public class ComplaintService {
                 .status(ComplaintStatus.PENDING)
                 .build();
 
-        // Generate unique tracking ID
         complaint.setTrackingId(generateTrackingId());
 
         if (authentication != null && authentication.isAuthenticated()
@@ -51,7 +50,6 @@ public class ComplaintService {
             String email = authentication.getName();
             User user = userRepository.findByEmail(email).orElse(null);
             if (user != null) {
-                // Only citizens can create complaints when authenticated
                 if (user.getRole() != UserRole.CITIZEN) {
                     throw new IllegalArgumentException("Only citizens can create complaints");
                 }
@@ -72,7 +70,6 @@ public class ComplaintService {
 
         Complaint saved = complaintRepository.save(complaint);
 
-        // Notify all admins about the new complaint
         List<User> admins = userRepository.findByRole(UserRole.ADMIN);
         notificationService.notifyNewComplaint(saved, admins);
 
@@ -86,7 +83,6 @@ public class ComplaintService {
         if (user.getRole() == UserRole.ADMIN) {
             return complaintRepository.findAllByOrderByCreatedAtDesc();
         } else if (user.getRole() == UserRole.OFFICER) {
-            // Officers see only their assigned complaints
             return complaintRepository.findByAssignedOfficerOrderByCreatedAtDesc(user);
         } else {
             return complaintRepository.findByReporterOrderByCreatedAtDesc(user);
@@ -101,17 +97,14 @@ public class ComplaintService {
         String email = authentication.getName();
         User user = userRepository.findByEmail(email).orElseThrow();
 
-        // Admin can view any complaint
         if (user.getRole() == UserRole.ADMIN) {
             return complaint;
         }
 
-        // Officer can view any complaint (especially those assigned to them)
         if (user.getRole() == UserRole.OFFICER) {
             return complaint;
         }
 
-        // Citizen can only view their own complaints
         if (user.getRole() == UserRole.CITIZEN) {
             if (complaint.getReporter() == null || !complaint.getReporter().getId().equals(user.getId())) {
                 throw new IllegalArgumentException("Access denied");
@@ -186,17 +179,14 @@ public class ComplaintService {
             if (status != ComplaintStatus.COMPLETED) {
                 throw new IllegalArgumentException("Officers can only mark a complaint as COMPLETED");
             }
-            // Allow officer to mark completed only from IN_PROGRESS
             if (complaint.getStatus() != ComplaintStatus.IN_PROGRESS) {
                 throw new IllegalArgumentException("Complaint must be IN_PROGRESS to be completed by officer");
             }
             complaint.setStatus(ComplaintStatus.COMPLETED);
 
-            // Notify admins that complaint is ready for review
             List<User> admins = userRepository.findByRole(UserRole.ADMIN);
             notificationService.notifyAdminComplaintCompleted(complaint, admins);
         } else if (user.getRole() == UserRole.ADMIN) {
-            // Admin can mark as RESOLVED (after officer completion) or REJECTED
             if (status == ComplaintStatus.RESOLVED) {
                 if (complaint.getStatus() != ComplaintStatus.COMPLETED) {
                     throw new IllegalArgumentException("Complaint must be COMPLETED by officer before resolving");
@@ -215,7 +205,6 @@ public class ComplaintService {
             } else if (status == ComplaintStatus.REOPENED) {
                 complaint.setStatus(ComplaintStatus.REOPENED);
             } else if (status == ComplaintStatus.COMPLETED) {
-                // Admin should not directly set COMPLETED
                 throw new IllegalArgumentException("Admins cannot set status to COMPLETED");
             } else if (status == ComplaintStatus.PENDING) {
                 complaint.setStatus(ComplaintStatus.PENDING);
@@ -231,7 +220,6 @@ public class ComplaintService {
 
         Complaint saved = complaintRepository.save(complaint);
 
-        // Notify citizen about status change
         notificationService.notifyStatusChange(saved, oldStatus, saved.getStatus());
 
         return saved;
@@ -268,10 +256,8 @@ public class ComplaintService {
         }
         Complaint saved = complaintRepository.save(complaint);
 
-        // Notify officer about assignment
         notificationService.notifyOfficerAssignment(saved, officer);
 
-        // Notify citizen about status change if status changed
         if (oldStatus != saved.getStatus()) {
             notificationService.notifyStatusChange(saved, oldStatus, saved.getStatus());
         }
@@ -318,12 +304,10 @@ public class ComplaintService {
         }
         Complaint saved = complaintRepository.save(complaint);
 
-        // Notify officer about unassignment
         if (previousOfficer != null) {
             notificationService.notifyOfficerUnassignment(saved, previousOfficer);
         }
 
-        // Notify citizen about status change if status changed
         if (oldStatus != saved.getStatus()) {
             notificationService.notifyStatusChange(saved, oldStatus, saved.getStatus());
         }
@@ -379,7 +363,6 @@ public class ComplaintService {
         String email = authentication.getName();
         User user = userRepository.findByEmail(email).orElseThrow();
 
-        // Only the author can edit their own note, and must be admin or officer
         if (!note.getAuthor().getId().equals(user.getId())) {
             throw new IllegalArgumentException("You can only edit your own notes");
         }
@@ -400,7 +383,6 @@ public class ComplaintService {
         String email = authentication.getName();
         User user = userRepository.findByEmail(email).orElseThrow();
 
-        // Only the author can delete their own note, and must be admin or officer
         if (!note.getAuthor().getId().equals(user.getId())) {
             throw new IllegalArgumentException("You can only delete your own notes");
         }
@@ -420,7 +402,6 @@ public class ComplaintService {
         String email = authentication.getName();
         User author = userRepository.findByEmail(email).orElseThrow();
 
-        // Only admins can add public updates
         if (author.getRole() != UserRole.ADMIN) {
             throw new IllegalArgumentException("Only admins can add public updates");
         }
@@ -434,7 +415,6 @@ public class ComplaintService {
         @SuppressWarnings("null")
         PublicUpdate saved = publicUpdateRepository.save(update);
 
-        // Notify citizen about the public update
         notificationService.notifyPublicUpdate(complaint);
 
         return saved;
@@ -456,7 +436,6 @@ public class ComplaintService {
             throw new IllegalArgumentException("Access denied");
         }
 
-        // Citizen: only if they are the reporter
         if (user.getRole() == UserRole.CITIZEN) {
             if (complaint.getReporter() != null && complaint.getReporter().getId().equals(user.getId())) {
                 return publicUpdateRepository.findByComplaintOrderByCreatedAtAsc(complaint);
@@ -478,7 +457,6 @@ public class ComplaintService {
         return complaintRepository.findByAssignedOfficerOrderByCreatedAtDesc(officer);
     }
 
-    // Citizen reopen
     public Complaint reopenComplaint(Long id, String feedback, Authentication authentication) {
         Long safeId = java.util.Objects.requireNonNull(id, "id cannot be null");
         Complaint complaint = complaintRepository.findById(safeId)
@@ -488,10 +466,6 @@ public class ComplaintService {
         if (user.getRole() != UserRole.CITIZEN) {
             throw new IllegalArgumentException("Only citizens can reopen complaints");
         }
-        // Allow reopening if:
-        // 1. Complaint has a reporter and it's the same user, OR
-        // 2. Complaint has no reporter (anonymous submission) – any authenticated
-        // citizen may reopen using tracking link
         if (complaint.getReporter() != null && !complaint.getReporter().getId().equals(user.getId())) {
             throw new IllegalArgumentException("Access denied");
         }
@@ -502,7 +476,6 @@ public class ComplaintService {
         complaint.setReopenedAt(LocalDateTime.now());
         complaint.setAssignedOfficer(null);
 
-        // If feedback is provided, add it as a public update
         if (feedback != null && !feedback.trim().isEmpty()) {
             PublicUpdate update = PublicUpdate.builder()
                     .complaint(complaint)
@@ -514,14 +487,12 @@ public class ComplaintService {
 
         Complaint saved = complaintRepository.save(complaint);
 
-        // Notify admins about reopened complaint
         List<User> admins = userRepository.findByRole(UserRole.ADMIN);
         notificationService.notifyAdminComplaintReopened(saved, admins);
 
         return saved;
     }
 
-    // In-memory search for simplicity
     public List<Complaint> searchComplaints(String trackingId, String keyword, ComplaintCategory category,
             ComplaintPriority priority, ComplaintStatus status, LocalDate fromDate, LocalDate toDate,
             Authentication authentication) {
@@ -553,7 +524,6 @@ public class ComplaintService {
         }).toList();
     }
 
-    // Metrics (basic)
     public DashboardMetrics getAdminMetrics(Authentication authentication) {
         String email = authentication.getName();
         User admin = userRepository.findByEmail(email).orElseThrow();
@@ -618,6 +588,39 @@ public class ComplaintService {
         String year = String.valueOf(LocalDate.now().getYear());
         String rand = UUID.randomUUID().toString().replaceAll("-", "").substring(0, 6).toUpperCase();
         return "C-" + year + "-" + rand;
+    }
+
+    public Complaint uploadResolutionPhoto(Long id, MultipartFile file, Authentication authentication)
+            throws IOException {
+        Long safeId = java.util.Objects.requireNonNull(id, "id cannot be null");
+        Complaint complaint = complaintRepository.findById(safeId)
+                .orElseThrow(() -> new IllegalArgumentException("Complaint not found"));
+
+        String email = authentication.getName();
+        User user = userRepository.findByEmail(email).orElseThrow();
+
+        if (user.getRole() != UserRole.OFFICER) {
+            throw new IllegalArgumentException("Only officers can upload resolution photos");
+        }
+
+        if (complaint.getAssignedOfficer() == null || !complaint.getAssignedOfficer().getId().equals(user.getId())) {
+            throw new IllegalArgumentException("Only the assigned officer can upload resolution photo");
+        }
+
+        if (complaint.getStatus() != ComplaintStatus.IN_PROGRESS
+                && complaint.getStatus() != ComplaintStatus.COMPLETED) {
+            throw new IllegalArgumentException(
+                    "Resolution photo can only be uploaded for in-progress or completed complaints");
+        }
+
+        if (file == null || file.isEmpty()) {
+            throw new IllegalArgumentException("File is required");
+        }
+
+        String filename = saveFile(file);
+        complaint.setResolutionPhotoPath(filename);
+
+        return complaintRepository.save(complaint);
     }
 
     @lombok.Getter

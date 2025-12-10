@@ -18,6 +18,7 @@ import {
   reopenComplaint,
   updateComplaint,
   withdrawComplaint,
+  uploadResolutionPhoto,
 } from "../services/api";
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
@@ -53,6 +54,8 @@ import {
   XCircle,
   Trash2,
   Pencil,
+  Camera,
+  Image,
 } from "lucide-react";
 
 export default function ComplaintDetails() {
@@ -80,6 +83,8 @@ export default function ComplaintDetails() {
   const [editPriority, setEditPriority] = useState("");
   const [editingNoteId, setEditingNoteId] = useState(null);
   const [editingNoteContent, setEditingNoteContent] = useState("");
+  const [resolutionPhoto, setResolutionPhoto] = useState(null);
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
 
   useEffect(() => {
     if (!user) {
@@ -118,7 +123,6 @@ export default function ComplaintDetails() {
     }
   }
 
-  // Map complaint status to a step index for the visual timeline
   const getTimelineStep = (status) => {
     switch (status) {
       case "PENDING":
@@ -158,6 +162,20 @@ export default function ComplaintDetails() {
       await loadComplaint();
     } catch (err) {
       setError(err.message);
+    }
+  }
+
+  async function handleUploadResolutionPhoto() {
+    if (!resolutionPhoto) return;
+    try {
+      setUploadingPhoto(true);
+      await uploadResolutionPhoto(id, resolutionPhoto);
+      setResolutionPhoto(null);
+      await loadComplaint();
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setUploadingPhoto(false);
     }
   }
 
@@ -364,7 +382,11 @@ export default function ComplaintDetails() {
               <Link to="/complaints">
                 <Button variant="ghost" className="gap-2">
                   <List className="w-4 h-4" />
-                  My Complaints
+                  {user.role === "ADMIN"
+                    ? "Complaints"
+                    : user.role === "OFFICER"
+                    ? "Task Assigned"
+                    : "My Complaints"}
                 </Button>
               </Link>
               <NotificationDropdown />
@@ -542,6 +564,30 @@ export default function ComplaintDetails() {
                       </a>
                     </div>
                   )}
+                  {complaint.resolutionPhotoPath && (
+                    <div className="bg-emerald-50 border border-emerald-200 rounded-md p-3">
+                      <p className="text-xs text-emerald-700 mb-2 uppercase flex items-center gap-1">
+                        <Camera className="w-3 h-3" />
+                        Resolution Photo
+                      </p>
+                      <a
+                        href={`/api/files/complaints/${encodeURIComponent(
+                          complaint.resolutionPhotoPath
+                        )}`}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="block"
+                      >
+                        <img
+                          src={`/api/files/complaints/${encodeURIComponent(
+                            complaint.resolutionPhotoPath
+                          )}`}
+                          alt="Resolution"
+                          className="w-full h-32 object-cover rounded-md hover:opacity-90 transition-opacity cursor-pointer"
+                        />
+                      </a>
+                    </div>
+                  )}
                 </div>
               </div>
             </CardContent>
@@ -704,9 +750,64 @@ export default function ComplaintDetails() {
                 complaint.assignedOfficer &&
                 complaint.assignedOfficer.id === user.id &&
                 complaint.status === "IN_PROGRESS" && (
-                  <Button className="w-full" onClick={handleMarkCompleted}>
-                    Mark as Completed
-                  </Button>
+                  <>
+                    <div className="space-y-2">
+                      <Label className="text-sm flex items-center gap-2">
+                        <Camera className="w-4 h-4" />
+                        Resolution Photo (optional)
+                      </Label>
+                      <Input
+                        type="file"
+                        accept="image/*"
+                        onChange={(e) => setResolutionPhoto(e.target.files[0])}
+                        className="text-sm"
+                      />
+                      {resolutionPhoto && (
+                        <Button
+                          variant="outline"
+                          className="w-full gap-2"
+                          onClick={handleUploadResolutionPhoto}
+                          disabled={uploadingPhoto}
+                        >
+                          <Image className="w-4 h-4" />
+                          {uploadingPhoto ? "Uploading..." : "Upload Photo"}
+                        </Button>
+                      )}
+                    </div>
+                    <Button className="w-full" onClick={handleMarkCompleted}>
+                      Mark as Completed
+                    </Button>
+                  </>
+                )}
+              {user.role === "OFFICER" &&
+                complaint.assignedOfficer &&
+                complaint.assignedOfficer.id === user.id &&
+                complaint.status === "COMPLETED" && (
+                  <div className="space-y-2">
+                    <Label className="text-sm flex items-center gap-2">
+                      <Camera className="w-4 h-4" />
+                      {complaint.resolutionPhotoPath
+                        ? "Update Resolution Photo"
+                        : "Add Resolution Photo"}
+                    </Label>
+                    <Input
+                      type="file"
+                      accept="image/*"
+                      onChange={(e) => setResolutionPhoto(e.target.files[0])}
+                      className="text-sm"
+                    />
+                    {resolutionPhoto && (
+                      <Button
+                        variant="outline"
+                        className="w-full gap-2"
+                        onClick={handleUploadResolutionPhoto}
+                        disabled={uploadingPhoto}
+                      >
+                        <Image className="w-4 h-4" />
+                        {uploadingPhoto ? "Uploading..." : "Upload Photo"}
+                      </Button>
+                    )}
+                  </div>
                 )}
               {user.role === "ADMIN" && complaint.status === "COMPLETED" && (
                 <Button className="w-full" onClick={handleMarkResolved}>

@@ -29,7 +29,7 @@ import {
 } from "lucide-react";
 
 export default function AnonymousSubmission() {
-  const [activeTab, setActiveTab] = useState("submit"); // "submit" or "track"
+  const [activeTab, setActiveTab] = useState("submit");
   const [form, setForm] = useState({
     title: "",
     description: "",
@@ -43,7 +43,6 @@ export default function AnonymousSubmission() {
   const [error, setError] = useState("");
   const [success, setSuccess] = useState(null);
 
-  // Tracking state
   const [trackingId, setTrackingId] = useState("");
   const [trackingResult, setTrackingResult] = useState(null);
   const [trackingError, setTrackingError] = useState("");

@@ -19,7 +19,6 @@ export default function Welcome() {
     if (!user) {
       navigate("/login", { replace: true });
     } else if (user.role !== "CITIZEN") {
-      // Non-citizen roles should still land on dashboard
       navigate("/dashboard", { replace: true });
     }
   }, []);

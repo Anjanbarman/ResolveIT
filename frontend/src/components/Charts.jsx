@@ -24,7 +24,7 @@ const COLORS = [
 export function StatusDistributionChart({ complaints }) {
   const data = Object.entries(
     complaints.reduce((acc, c) => {
-      const key = c.status === "COMPLETED" ? "IN_PROGRESS" : c.status; // mask completed
+      const key = c.status === "COMPLETED" ? "IN_PROGRESS" : c.status;
       acc[key] = (acc[key] || 0) + 1;
       return acc;
     }, {})

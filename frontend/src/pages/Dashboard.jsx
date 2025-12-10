@@ -41,9 +41,9 @@ import {
 export default function Dashboard() {
   const navigate = useNavigate();
   const user = getUser();
-  const [complaints, setComplaints] = useState([]); // recent (for table)
-  const [allComplaints, setAllComplaints] = useState([]); // full list for fallback stats
-  const [metrics, setMetrics] = useState(null); // server metrics
+  const [complaints, setComplaints] = useState([]);
+  const [allComplaints, setAllComplaints] = useState([]);
+  const [metrics, setMetrics] = useState(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -62,7 +62,6 @@ export default function Dashboard() {
           : await getComplaints();
       setAllComplaints(data);
       setComplaints(data.slice(0, 5));
-      // Fetch metrics if admin/officer
       if (user.role === "ADMIN") {
         const m = await getAdminMetrics();
         setMetrics(m);
@@ -122,13 +121,11 @@ export default function Dashboard() {
   }
 
   const displayStatusForRole = (status) => {
-    // Hide "COMPLETED" on dashboard for non-officers; show as IN_PROGRESS instead
     if (status === "COMPLETED" && user.role !== "OFFICER") return "IN_PROGRESS";
     return status;
   };
 
   const stats = (() => {
-    // Admin: Total, Pending, Resolved (reduced); provide optional avg as info
     if (metrics && user.role === "ADMIN") {
       return [
         {
@@ -179,7 +176,6 @@ export default function Dashboard() {
         },
       ];
     }
-    // Citizen fallback (client-side only)
     return [
       {
         label: "Total Complaints",
@@ -235,7 +231,11 @@ export default function Dashboard() {
               <Link to="/complaints">
                 <Button variant="ghost" className="gap-2">
                   <List className="w-4 h-4" />
-                  My Complaints
+                  {user.role === "ADMIN"
+                    ? "Complaints"
+                    : user.role === "OFFICER"
+                    ? "Task Assigned"
+                    : "My Complaints"}
                 </Button>
               </Link>
               <Link to="/profile">

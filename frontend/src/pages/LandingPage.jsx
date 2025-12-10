@@ -100,10 +100,6 @@ export default function LandingPage() {
       <section className="pt-24 pb-12 px-4 sm:px-6 lg:px-8">
         <div className="max-w-7xl mx-auto">
           <div className="text-center max-w-4xl mx-auto">
-            <div className="inline-flex items-center gap-2 px-4 py-2 bg-violet-100 text-violet-700 rounded-full text-sm font-medium mb-6">
-              <Globe className="w-4 h-4" />
-              <span>Trusted by Government Organizations Worldwide</span>
-            </div>
             <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold text-gray-900 mb-4 leading-tight">
               Transform Citizen{" "}
               <span className="bg-gradient-to-r from-violet-600 to-purple-600 bg-clip-text text-transparent">
@@ -120,7 +116,7 @@ export default function LandingPage() {
                 onClick={() => navigate("/signup")}
                 className="bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-700 hover:to-purple-700 text-white px-6 py-3"
               >
-                Start Free Trial
+                Get Started
                 <ArrowRight className="w-4 h-4 ml-2" />
               </Button>
               <Button

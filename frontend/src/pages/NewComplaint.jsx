@@ -52,7 +52,6 @@ export default function NewComplaint() {
   }
 
   if (user && user.role !== "CITIZEN") {
-    // Only citizens can access the new complaint page
     navigate("/dashboard", { replace: true });
     return null;
   }
@@ -112,7 +111,11 @@ export default function NewComplaint() {
                 <Link to="/complaints">
                   <Button variant="ghost" className="gap-2">
                     <List className="w-4 h-4" />
-                    My Complaints
+                    {user.role === "ADMIN"
+                      ? "Complaints"
+                      : user.role === "OFFICER"
+                      ? "Task Assigned"
+                      : "My Complaints"}
                   </Button>
                 </Link>
                 <NotificationDropdown />
@@ -197,7 +200,11 @@ export default function NewComplaint() {
               <Link to="/complaints">
                 <Button variant="ghost" className="gap-2">
                   <List className="w-4 h-4" />
-                  My Complaints
+                  {user.role === "ADMIN"
+                    ? "Complaints"
+                    : user.role === "OFFICER"
+                    ? "Task Assigned"
+                    : "My Complaints"}
                 </Button>
               </Link>
               <NotificationDropdown />
