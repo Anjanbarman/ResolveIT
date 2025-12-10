@@ -27,30 +27,22 @@ public class OtpService {
     @Value("${twofactor.api.key:}")
     private String twoFactorApiKey;
 
-    // Indian phone number pattern: starts with 6-9, followed by 9 digits
     private static final Pattern INDIAN_PHONE_PATTERN = Pattern.compile("^[6-9]\\d{9}$");
 
-    // OTP validity in minutes
     private static final int OTP_VALIDITY_MINUTES = 5;
 
     private final SecureRandom secureRandom = new SecureRandom();
     private final RestTemplate restTemplate = new RestTemplate();
 
-    /**
-     * Validates if the phone number is a valid Indian mobile number
-     */
     public boolean isValidIndianPhoneNumber(String phoneNumber) {
         if (phoneNumber == null) {
             return false;
         }
-        // Remove +91 or 91 prefix if present
+
         String cleanedNumber = phoneNumber.replaceAll("^(\\+91|91)", "").trim();
         return INDIAN_PHONE_PATTERN.matcher(cleanedNumber).matches();
     }
 
-    /**
-     * Normalizes Indian phone number to 10 digits
-     */
     public String normalizePhoneNumber(String phoneNumber) {
         if (phoneNumber == null) {
             return null;
@@ -58,17 +50,11 @@ public class OtpService {
         return phoneNumber.replaceAll("^(\\+91|91)", "").trim();
     }
 
-    /**
-     * Generates a random 6-digit OTP
-     */
     private String generateOtpCode() {
         int otp = 100000 + secureRandom.nextInt(900000); // Generates 6-digit number
         return String.valueOf(otp);
     }
 
-    /**
-     * Sends OTP to the given Indian phone number
-     */
     @Transactional
     public String sendOtp(String phoneNumber) {
         String normalizedPhone = normalizePhoneNumber(phoneNumber);
@@ -78,7 +64,6 @@ public class OtpService {
                     "Invalid Indian phone number. Must be a 10-digit number starting with 6-9.");
         }
 
-        // Check if phone is already verified by another user
         if (userRepository.findByPhoneNumber(normalizedPhone).isPresent()) {
             User existingUser = userRepository.findByPhoneNumber(normalizedPhone).get();
             if (existingUser.getPhoneVerified()) {
@@ -97,7 +82,6 @@ public class OtpService {
 
         otpRepository.save(otp);
 
-        // Send OTP via Twilio SMS
         sendSms(normalizedPhone, otpCode);
 
         return "OTP sent successfully to +91" + normalizedPhone;
@@ -107,7 +91,6 @@ public class OtpService {
      * Sends SMS using 2Factor.in (Free 25 OTP SMS trial)
      */
     private void sendSms(String phoneNumber, String otpCode) {
-        // Try 2Factor.in if configured
         if (twoFactorApiKey != null && !twoFactorApiKey.isEmpty()) {
             try {
                 String url = String.format(
@@ -131,7 +114,6 @@ public class OtpService {
             }
         }
 
-        // Fallback: Log OTP to console for development
         log.info("===============================================");
         log.info("  OTP for +91{}: {}", phoneNumber, otpCode);
         log.info("  Valid for {} minutes", OTP_VALIDITY_MINUTES);
@@ -165,7 +147,6 @@ public class OtpService {
             throw new IllegalArgumentException("Invalid OTP. Please try again.");
         }
 
-        // Mark OTP as verified
         otp.setVerified(true);
         otpRepository.save(otp);
 
@@ -179,10 +160,8 @@ public class OtpService {
     public User verifyOtpAndLinkToUser(String phoneNumber, String otpCode, String userEmail) {
         String normalizedPhone = normalizePhoneNumber(phoneNumber);
 
-        // First verify the OTP
         verifyOtp(normalizedPhone, otpCode);
 
-        // Find the user and update phone number
         User user = userRepository.findByEmail(userEmail)
                 .orElseThrow(() -> new IllegalArgumentException("User not found."));
 

@@ -12,8 +12,6 @@ import java.nio.file.Paths;
 public class WebMvcConfig implements WebMvcConfigurer {
     @Override
     public void addResourceHandlers(@NonNull ResourceHandlerRegistry registry) {
-        // Serve uploaded complaint files under /api/files/complaints/** via local
-        // folder uploads/complaints
         Path uploadDir = Paths.get("uploads/complaints").toAbsolutePath().normalize();
         String location = "file:" + uploadDir.toString() + "/"; // trailing slash is important
 

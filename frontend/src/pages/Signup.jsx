@@ -38,7 +38,6 @@ export default function Signup() {
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
 
-  // OTP states
   const [showOtpSection, setShowOtpSection] = useState(false);
   const [otpSent, setOtpSent] = useState(false);
   const [otpCode, setOtpCode] = useState("");
@@ -47,7 +46,6 @@ export default function Signup() {
 
   const onChange = (e) => setForm({ ...form, [e.target.name]: e.target.value });
 
-  // Validate Indian phone number (10 digits starting with 6-9)
   const isValidIndianPhone = (phone) => {
     const cleaned = phone.replace(/^(\+91|91)/, "").trim();
     return /^[6-9]\d{9}$/.test(cleaned);
@@ -101,7 +99,6 @@ export default function Signup() {
     setSuccess("");
     setLoading(true);
     try {
-      // Include phone number only if verified
       const signupData = {
         name: form.name,
         email: form.email,

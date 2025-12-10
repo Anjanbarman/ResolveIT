@@ -32,7 +32,6 @@ public class DataInitializer implements CommandLineRunner {
         } else {
             log.info("Users found. Checking for plain text passwords...");
             userRepository.findAll().forEach(user -> {
-                // BCrypt hashes typically start with $2a$, $2b$, or $2y$
                 if (!user.getPassword().startsWith("$2")) {
                     log.warn("User {} appears to have a plain text password. Updating to BCrypt hash.",
                             user.getEmail());

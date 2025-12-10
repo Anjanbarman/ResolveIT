@@ -56,7 +56,6 @@ export default function ComplaintList() {
       navigate("/login", { replace: true });
       return;
     }
-    // Initialize filter from query string if provided
     try {
       const params = new URLSearchParams(location.search);
       const status = params.get("status");
@@ -68,7 +67,6 @@ export default function ComplaintList() {
     loadComplaints();
   }, []);
 
-  // Update filter when query changes (e.g., navigating from dashboard)
   useEffect(() => {
     try {
       const params = new URLSearchParams(location.search);
@@ -78,10 +76,8 @@ export default function ComplaintList() {
         setFilter(normalized);
       }
     } catch (_) {}
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [location.search]);
 
-  // Close dropdown when clicking outside
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (showDownloadMenu && !event.target.closest(".relative")) {
@@ -173,9 +169,7 @@ export default function ComplaintList() {
 
   const filteredComplaints = (() => {
     if (filter === "ALL") return complaints;
-    // Officer-specific pseudo-filter: ASSIGNED
     if (filter === "ASSIGNED") {
-      // Show only active assignments (exclude terminal states)
       const terminal = ["RESOLVED", "WITHDRAWN", "REJECTED"];
       return complaints.filter(
         (c) =>
@@ -186,7 +180,6 @@ export default function ComplaintList() {
           !terminal.includes(c.status)
       );
     }
-    // Citizen/Admin: IN_PROGRESS should include COMPLETED (masked as in progress for them)
     if (
       (user.role === "CITIZEN" || user.role === "ADMIN") &&
       filter === "IN_PROGRESS"
@@ -231,10 +224,8 @@ export default function ComplaintList() {
         { value: "RESOLVED", label: "Resolved", icon: CheckCircle2 },
       ];
     }
-    // Citizen/Admin: hide Completed filter
     return [
       { value: "ALL", label: "All", icon: List },
-      // Citizens can still pick Pending
       { value: "PENDING", label: "Pending", icon: Clock },
       { value: "IN_PROGRESS", label: "In Progress", icon: AlertCircle },
       { value: "RESOLVED", label: "Resolved", icon: CheckCircle2 },
@@ -270,7 +261,11 @@ export default function ComplaintList() {
               <Link to="/complaints">
                 <Button variant="ghost" className="gap-2">
                   <List className="w-4 h-4" />
-                  My Complaints
+                  {user.role === "ADMIN"
+                    ? "Complaints"
+                    : user.role === "OFFICER"
+                    ? "Task Assigned"
+                    : "My Complaints"}
                 </Button>
               </Link>
               <NotificationDropdown />
@@ -291,12 +286,16 @@ export default function ComplaintList() {
         <div className="flex justify-between items-center mb-4">
           <div>
             <h1 className="text-2xl font-bold text-gray-900 mb-1.5">
-              {user.role === "OFFICER"
-                ? "Assigned Complaints"
+              {user.role === "ADMIN"
+                ? "Complaints"
+                : user.role === "OFFICER"
+                ? "Task Assigned"
                 : "My Complaints"}
             </h1>
             <p className="text-gray-600">
-              {user.role === "OFFICER"
+              {user.role === "ADMIN"
+                ? "View and manage all complaints"
+                : user.role === "OFFICER"
                 ? "Complaints assigned to you"
                 : "View and manage all your complaints"}
             </p>

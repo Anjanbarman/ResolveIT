@@ -26,7 +26,6 @@ public class ExportController {
             Authentication authentication) {
         try {
             List<Complaint> complaints;
-            // Determine which complaints to fetch based on role
             boolean isOfficer = authentication.getAuthorities().stream()
                     .anyMatch(a -> a.getAuthority().equals("ROLE_OFFICER"));
 
@@ -36,7 +35,6 @@ public class ExportController {
                 complaints = complaintService.getAllComplaints(authentication);
             }
 
-            // Filter by IDs if provided
             if (ids != null && !ids.isEmpty()) {
                 complaints = complaints.stream()
                         .filter(c -> ids.contains(c.getId()))
@@ -44,14 +42,13 @@ public class ExportController {
             }
 
             StringBuilder csv = new StringBuilder();
-            // CSV Header - include Public Updates for non-officers
             if (isOfficer) {
                 csv.append("ID,Tracking ID,Title,Category,Priority,Status,Created At,Reporter,Assigned Officer\n");
             } else {
-                csv.append("ID,Tracking ID,Title,Category,Priority,Status,Created At,Reporter,Assigned Officer,Public Updates\n");
+                csv.append(
+                        "ID,Tracking ID,Title,Category,Priority,Status,Created At,Reporter,Assigned Officer,Public Updates\n");
             }
 
-            // CSV Rows
             for (Complaint c : complaints) {
                 csv.append(escapeCsv(c.getId())).append(",");
                 csv.append(escapeCsv(c.getTrackingId())).append(",");
@@ -60,25 +57,24 @@ public class ExportController {
                 csv.append(escapeCsv(c.getPriority())).append(",");
                 csv.append(escapeCsv(c.getStatus())).append(",");
                 csv.append(escapeCsv(c.getCreatedAt())).append(",");
-                
+
                 String reporterName = c.getReporter() != null ? c.getReporter().getName() : c.getSubmitterName();
                 csv.append(escapeCsv(reporterName)).append(",");
-                
+
                 String officerName = c.getAssignedOfficer() != null ? c.getAssignedOfficer().getName() : "Unassigned";
                 csv.append(escapeCsv(officerName));
-                
-                // Add public updates for non-officers
+
                 if (!isOfficer) {
                     csv.append(",");
                     List<com.example.resolveit.model.PublicUpdate> updates = c.getPublicUpdates();
                     if (updates != null && !updates.isEmpty()) {
                         String publicUpdatesText = updates.stream()
-                            .map(u -> u.getAuthor().getName() + " (" + u.getCreatedAt() + "): " + u.getContent())
-                            .collect(Collectors.joining(" | "));
+                                .map(u -> u.getAuthor().getName() + " (" + u.getCreatedAt() + "): " + u.getContent())
+                                .collect(Collectors.joining(" | "));
                         csv.append(escapeCsv(publicUpdatesText));
                     }
                 }
-                
+
                 csv.append("\n");
             }
 
@@ -97,7 +93,8 @@ public class ExportController {
     }
 
     private String escapeCsv(Object value) {
-        if (value == null) return "";
+        if (value == null)
+            return "";
         String str = value.toString();
         if (str.contains(",") || str.contains("\"") || str.contains("\n")) {
             return "\"" + str.replace("\"", "\"\"") + "\"";
@@ -126,41 +123,41 @@ public class ExportController {
                         .collect(Collectors.toList());
             }
 
-            // Generate PDF
             java.io.ByteArrayOutputStream baos = new java.io.ByteArrayOutputStream();
             com.itextpdf.kernel.pdf.PdfWriter writer = new com.itextpdf.kernel.pdf.PdfWriter(baos);
             com.itextpdf.kernel.pdf.PdfDocument pdf = new com.itextpdf.kernel.pdf.PdfDocument(writer);
-            com.itextpdf.layout.Document document = new com.itextpdf.layout.Document(pdf, com.itextpdf.kernel.geom.PageSize.A4.rotate());
+            com.itextpdf.layout.Document document = new com.itextpdf.layout.Document(pdf,
+                    com.itextpdf.kernel.geom.PageSize.A4.rotate());
 
-            // Title
             com.itextpdf.layout.element.Paragraph title = new com.itextpdf.layout.element.Paragraph("Complaints Report")
-                    .setFont(com.itextpdf.kernel.font.PdfFontFactory.createFont(com.itextpdf.io.font.constants.StandardFonts.HELVETICA_BOLD))
+                    .setFont(com.itextpdf.kernel.font.PdfFontFactory
+                            .createFont(com.itextpdf.io.font.constants.StandardFonts.HELVETICA_BOLD))
                     .setFontSize(18)
                     .setMarginBottom(10);
             document.add(title);
 
-            // Table
             float[] columnWidths = isOfficer
-                    ? new float[]{1, 2, 3, 2, 1.5f, 1.5f, 2, 2, 2}
-                    : new float[]{1, 2, 3, 2, 1.5f, 1.5f, 2, 2, 2, 4};
-            
+                    ? new float[] { 1, 2, 3, 2, 1.5f, 1.5f, 2, 2, 2 }
+                    : new float[] { 1, 2, 3, 2, 1.5f, 1.5f, 2, 2, 2, 4 };
+
             com.itextpdf.layout.element.Table table = new com.itextpdf.layout.element.Table(columnWidths);
             table.setWidth(com.itextpdf.layout.properties.UnitValue.createPercentValue(100));
 
-            // Header
             String[] headers = isOfficer
-                    ? new String[]{"ID", "Tracking ID", "Title", "Category", "Priority", "Status", "Created At", "Reporter", "Assigned Officer"}
-                    : new String[]{"ID", "Tracking ID", "Title", "Category", "Priority", "Status", "Created At", "Reporter", "Assigned Officer", "Public Updates"};
+                    ? new String[] { "ID", "Tracking ID", "Title", "Category", "Priority", "Status", "Created At",
+                            "Reporter", "Assigned Officer" }
+                    : new String[] { "ID", "Tracking ID", "Title", "Category", "Priority", "Status", "Created At",
+                            "Reporter", "Assigned Officer", "Public Updates" };
 
             for (String header : headers) {
                 table.addHeaderCell(new com.itextpdf.layout.element.Cell()
                         .add(new com.itextpdf.layout.element.Paragraph(header))
                         .setBackgroundColor(com.itextpdf.kernel.colors.ColorConstants.LIGHT_GRAY)
-                        .setFont(com.itextpdf.kernel.font.PdfFontFactory.createFont(com.itextpdf.io.font.constants.StandardFonts.HELVETICA_BOLD))
+                        .setFont(com.itextpdf.kernel.font.PdfFontFactory
+                                .createFont(com.itextpdf.io.font.constants.StandardFonts.HELVETICA_BOLD))
                         .setFontSize(8));
             }
 
-            // Rows
             for (Complaint c : complaints) {
                 table.addCell(createCell(String.valueOf(c.getId())));
                 table.addCell(createCell(c.getTrackingId()));
@@ -169,13 +166,13 @@ public class ExportController {
                 table.addCell(createCell(c.getPriority().toString()));
                 table.addCell(createCell(c.getStatus().toString()));
                 table.addCell(createCell(c.getCreatedAt().toString()));
-                
+
                 String reporterName = c.getReporter() != null ? c.getReporter().getName() : c.getSubmitterName();
                 table.addCell(createCell(reporterName));
-                
+
                 String officerName = c.getAssignedOfficer() != null ? c.getAssignedOfficer().getName() : "Unassigned";
                 table.addCell(createCell(officerName));
-                
+
                 if (!isOfficer) {
                     List<com.example.resolveit.model.PublicUpdate> updates = c.getPublicUpdates();
                     String updatesText = "";
@@ -208,7 +205,8 @@ public class ExportController {
     private com.itextpdf.layout.element.Cell createCell(String content) throws java.io.IOException {
         return new com.itextpdf.layout.element.Cell()
                 .add(new com.itextpdf.layout.element.Paragraph(content != null ? content : ""))
-                .setFont(com.itextpdf.kernel.font.PdfFontFactory.createFont(com.itextpdf.io.font.constants.StandardFonts.HELVETICA))
+                .setFont(com.itextpdf.kernel.font.PdfFontFactory
+                        .createFont(com.itextpdf.io.font.constants.StandardFonts.HELVETICA))
                 .setFontSize(7);
     }
 }

@@ -28,13 +28,11 @@ export default function NotificationDropdown() {
 
   useEffect(() => {
     loadUnreadCount();
-    // Poll for new notifications every 30 seconds
     const interval = setInterval(loadUnreadCount, 30000);
     return () => clearInterval(interval);
   }, []);
 
   useEffect(() => {
-    // Close dropdown when clicking outside
     function handleClickOutside(event) {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
         setIsOpen(false);

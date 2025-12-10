@@ -28,7 +28,6 @@ public class AuthService {
             throw new IllegalArgumentException("Email already in use");
         }
 
-        // Check if phone number is already in use (if provided)
         if (phoneNumber != null && !phoneNumber.isEmpty()) {
             if (userRepository.findByPhoneNumber(phoneNumber).isPresent()) {
                 throw new IllegalArgumentException("Phone number already in use");
@@ -47,7 +46,6 @@ public class AuthService {
     }
 
     public Map<String, Object> login(String email, String password) {
-        // Check if user exists first
         if (!userRepository.existsByEmail(email)) {
             throw new BadCredentialsException("User not found with email: " + email);
         }

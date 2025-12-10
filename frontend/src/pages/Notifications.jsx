@@ -38,7 +38,7 @@ export default function Notifications() {
   const user = getUser();
   const [notifications, setNotifications] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [filter, setFilter] = useState("ALL"); // ALL, UNREAD, READ
+  const [filter, setFilter] = useState("ALL");
 
   useEffect(() => {
     if (!user) {
@@ -178,7 +178,11 @@ export default function Notifications() {
               <Link to="/complaints">
                 <Button variant="ghost" className="gap-2">
                   <List className="w-4 h-4" />
-                  My Complaints
+                  {user.role === "ADMIN"
+                    ? "Complaints"
+                    : user.role === "OFFICER"
+                    ? "Task Assigned"
+                    : "My Complaints"}
                 </Button>
               </Link>
               <Link to="/profile">

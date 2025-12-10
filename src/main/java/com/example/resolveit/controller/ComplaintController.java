@@ -98,6 +98,21 @@ public class ComplaintController {
         }
     }
 
+    @PostMapping("/{id}/resolution-photo")
+    public ResponseEntity<?> uploadResolutionPhoto(
+            @PathVariable Long id,
+            @RequestParam("file") MultipartFile file,
+            Authentication authentication) {
+        try {
+            Complaint complaint = complaintService.uploadResolutionPhoto(id, file, authentication);
+            return ResponseEntity.ok(toDto(complaint));
+        } catch (IOException e) {
+            return ResponseEntity.status(500).body(Map.of("message", "File upload failed"));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.status(400).body(Map.of("message", e.getMessage()));
+        }
+    }
+
     @PostMapping("/{id}/status")
     public ResponseEntity<?> updateStatus(
             @PathVariable Long id,
@@ -311,7 +326,6 @@ public class ComplaintController {
             if (filename.contains("..") || filename.contains("/") || filename.contains("\\")) {
                 return ResponseEntity.status(400).body(Map.of("message", "Invalid filename"));
             }
-            // Find complaint with this attachment (permission still checked below)
             Complaint c = complaintService.getAllComplaints(authentication).stream()
                     .filter(comp -> filename.equals(comp.getAttachmentPath()))
                     .findFirst()
@@ -319,7 +333,6 @@ public class ComplaintController {
             if (c == null) {
                 return ResponseEntity.status(404).body(Map.of("message", "Complaint not found for attachment"));
             }
-            // Re-apply access rules
             complaintService.getComplaintById(c.getId(), authentication);
             java.nio.file.Path base = java.nio.file.Paths.get("uploads/complaints");
             java.nio.file.Path path = base.resolve(filename).normalize();
@@ -352,6 +365,7 @@ public class ComplaintController {
         dto.put("priority", complaint.getPriority().toString());
         dto.put("status", complaint.getStatus().toString());
         dto.put("attachmentPath", complaint.getAttachmentPath());
+        dto.put("resolutionPhotoPath", complaint.getResolutionPhotoPath());
         dto.put("createdAt", complaint.getCreatedAt().toString());
         dto.put("updatedAt", complaint.getUpdatedAt().toString());
         dto.put("resolvedAt", complaint.getResolvedAt() != null ? complaint.getResolvedAt().toString() : null);

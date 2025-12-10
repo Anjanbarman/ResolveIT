@@ -74,14 +74,12 @@ public class AnonymousComplaintService {
     private List<ComplaintTrackingResponse.StatusTimeline> buildTimeline(Complaint complaint) {
         List<ComplaintTrackingResponse.StatusTimeline> timeline = new ArrayList<>();
 
-        // Add submitted event
         timeline.add(ComplaintTrackingResponse.StatusTimeline.builder()
                 .status("SUBMITTED")
                 .description("Complaint submitted successfully")
                 .timestamp(complaint.getCreatedAt())
                 .build());
 
-        // Add current status if different from PENDING
         if (complaint.getStatus() != ComplaintStatus.PENDING) {
             timeline.add(ComplaintTrackingResponse.StatusTimeline.builder()
                     .status(complaint.getStatus().name())
@@ -90,7 +88,6 @@ public class AnonymousComplaintService {
                     .build());
         }
 
-        // Add reopened event if applicable
         if (complaint.getReopenedAt() != null) {
             timeline.add(ComplaintTrackingResponse.StatusTimeline.builder()
                     .status("REOPENED")
@@ -99,7 +96,6 @@ public class AnonymousComplaintService {
                     .build());
         }
 
-        // Add resolution event if resolved
         if (complaint.getResolvedAt() != null) {
             timeline.add(ComplaintTrackingResponse.StatusTimeline.builder()
                     .status("RESOLVED")

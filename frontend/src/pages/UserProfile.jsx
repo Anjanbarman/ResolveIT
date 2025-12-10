@@ -43,13 +43,11 @@ export default function UserProfile() {
   const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  // Profile form state
   const [profileForm, setProfileForm] = useState({ name: "", email: "" });
   const [profileLoading, setProfileLoading] = useState(false);
   const [profileError, setProfileError] = useState("");
   const [profileSuccess, setProfileSuccess] = useState("");
 
-  // Password form state
   const [passwordForm, setPasswordForm] = useState({
     oldPassword: "",
     newPassword: "",
@@ -59,7 +57,6 @@ export default function UserProfile() {
   const [passwordError, setPasswordError] = useState("");
   const [passwordSuccess, setPasswordSuccess] = useState("");
 
-  // Phone verification state
   const [phoneForm, setPhoneForm] = useState({ phoneNumber: "" });
   const [otpCode, setOtpCode] = useState("");
   const [otpSent, setOtpSent] = useState(false);
@@ -104,7 +101,6 @@ export default function UserProfile() {
       setProfile(updatedProfile);
       setProfileSuccess("Profile updated successfully!");
 
-      // Update local storage with new user data
       const updatedUser = {
         id: updatedProfile.id,
         name: updatedProfile.name,
@@ -113,7 +109,6 @@ export default function UserProfile() {
       };
       saveUser(updatedUser);
 
-      // If email changed, inform user they may need to re-login
       if (profileForm.email !== user.email) {
         setTimeout(() => {
           alert(
@@ -133,13 +128,11 @@ export default function UserProfile() {
     setPasswordError("");
     setPasswordSuccess("");
 
-    // Validate passwords match
     if (passwordForm.newPassword !== passwordForm.confirmPassword) {
       setPasswordError("New passwords do not match");
       return;
     }
 
-    // Validate password length
     if (passwordForm.newPassword.length < 6) {
       setPasswordError("New password must be at least 6 characters long");
       return;
@@ -165,7 +158,6 @@ export default function UserProfile() {
     }
   }
 
-  // Validate Indian phone number (10 digits starting with 6-9)
   function isValidIndianPhone(phone) {
     const cleaned = phone.replace(/^(\+91|91)/, "").trim();
     return /^[6-9]\d{9}$/.test(cleaned);
@@ -211,7 +203,6 @@ export default function UserProfile() {
       const cleaned = phoneForm.phoneNumber.replace(/^(\+91|91)/, "").trim();
       const result = await verifyOtpAndLink(cleaned, otpCode);
       setPhoneSuccess(result.message || "Phone number verified successfully!");
-      // Reload profile to get updated phone info
       await loadProfile();
       setOtpSent(false);
       setOtpCode("");

@@ -1,6 +1,5 @@
 import axios from "axios";
 
-// Create axios instance with default config
 const api = axios.create({
   baseURL: "/api",
   headers: {
@@ -8,7 +7,6 @@ const api = axios.create({
   },
 });
 
-// Add request interceptor to include auth token
 api.interceptors.request.use(
   (config) => {
     const token = getToken();
@@ -22,7 +20,6 @@ api.interceptors.request.use(
   }
 );
 
-// Add response interceptor to handle errors
 api.interceptors.response.use(
   (response) => response,
   (error) => {
@@ -70,7 +67,6 @@ export async function createComplaint(formData) {
   }
 }
 
-// Anonymous complaint tracking - no authentication required
 export async function trackAnonymousComplaint(trackingId) {
   try {
     const { data } = await axios.get(`/api/anonymous/track/${trackingId}`);
@@ -142,6 +138,25 @@ export async function updateComplaintStatus(id, status, adminNotes) {
   }
 }
 
+export async function uploadResolutionPhoto(id, file) {
+  try {
+    const formData = new FormData();
+    formData.append("file", file);
+    const { data } = await api.post(
+      `/complaints/${id}/resolution-photo`,
+      formData,
+      {
+        headers: {
+          "Content-Type": "multipart/form-data",
+        },
+      }
+    );
+    return data;
+  } catch (error) {
+    throw new Error(error.message || "Failed to upload resolution photo");
+  }
+}
+
 export function saveToken(token) {
   localStorage.setItem("auth_token", token);
 }
@@ -164,7 +179,6 @@ export function getUser() {
   try {
     return JSON.parse(raw);
   } catch (e) {
-    // Corrupt data; clear and return null to avoid runtime crashes
     try {
       localStorage.removeItem("user");
     } catch {}
@@ -378,7 +392,6 @@ export async function downloadComplaintsPdf(ids = []) {
   }
 }
 
-// User Profile APIs
 export async function getUserProfile() {
   try {
     const { data } = await api.get("/users/profile");
@@ -409,7 +422,6 @@ export async function changePassword({ oldPassword, newPassword }) {
   }
 }
 
-// OTP APIs for Indian phone number verification
 export async function sendOtp(phoneNumber) {
   try {
     const { data } = await api.post("/otp/send", { phoneNumber });
@@ -449,7 +461,6 @@ export async function validatePhoneNumber(phoneNumber) {
   }
 }
 
-// Notification APIs
 export async function getNotifications() {
   try {
     const { data } = await api.get("/notifications");

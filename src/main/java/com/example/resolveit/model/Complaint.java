@@ -82,6 +82,9 @@ public class Complaint {
     @Column(length = 1000)
     private String adminNotes;
 
+    @Column
+    private String resolutionPhotoPath;
+
     @OneToMany(mappedBy = "complaint", cascade = CascadeType.ALL, orphanRemoval = true)
     @Builder.Default
     private List<PublicUpdate> publicUpdates = new ArrayList<>();
