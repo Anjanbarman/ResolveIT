@@ -312,6 +312,15 @@ export async function reopenComplaint(id, feedback) {
   }
 }
 
+export async function addCitizenFeedback(id, feedback) {
+  try {
+    const { data } = await api.post(`/complaints/${id}/feedback`, { feedback });
+    return data;
+  } catch (error) {
+    throw new Error(error.message || "Failed to submit feedback");
+  }
+}
+
 export async function searchComplaints(params = {}) {
   try {
     const { data } = await api.get("/complaints/search", { params });

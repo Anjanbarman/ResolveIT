@@ -1,6 +1,7 @@
 package com.example.resolveit.controller;
 
 import com.example.resolveit.model.*;
+import com.example.resolveit.repository.UserRepository;
 import com.example.resolveit.service.ComplaintService;
 import lombok.Data;
 import lombok.RequiredArgsConstructor;
@@ -27,6 +28,7 @@ import java.util.stream.Collectors;
 public class ComplaintController {
 
     private final ComplaintService complaintService;
+    private final UserRepository userRepository;
 
     @PostMapping
     public ResponseEntity<?> createComplaint(
@@ -67,7 +69,7 @@ public class ComplaintController {
     public ResponseEntity<?> getComplaintById(@PathVariable Long id, Authentication authentication) {
         try {
             Complaint complaint = complaintService.getComplaintById(id, authentication);
-            return ResponseEntity.ok(toDto(complaint));
+            return ResponseEntity.ok(toDto(complaint, authentication));
         } catch (IllegalArgumentException e) {
             return ResponseEntity.status(404).body(Map.of("message", e.getMessage()));
         }
@@ -397,6 +399,29 @@ public class ComplaintController {
         return dto;
     }
 
+    private Map<String, Object> toDto(Complaint complaint, Authentication authentication) {
+        Map<String, Object> dto = toDto(complaint);
+
+        // Include citizen feedback details based on role
+        if (authentication != null) {
+            String email = authentication.getName();
+            userRepository.findByEmail(email).ifPresent(user -> {
+                if (user.getRole() == UserRole.ADMIN) {
+                    // Admins can see the full feedback content
+                    dto.put("citizenFeedback", complaint.getCitizenFeedback());
+                    dto.put("citizenFeedbackAt", complaint.getCitizenFeedbackAt() != null
+                            ? complaint.getCitizenFeedbackAt().toString()
+                            : null);
+                } else if (user.getRole() == UserRole.CITIZEN) {
+                    // Citizens can see if they've submitted feedback (but not the content)
+                    dto.put("hasCitizenFeedback", complaint.getCitizenFeedback() != null);
+                }
+            });
+        }
+
+        return dto;
+    }
+
     @PostMapping("/{id}/reopen")
     public ResponseEntity<?> reopenComplaint(
             @PathVariable Long id,
@@ -406,6 +431,19 @@ public class ComplaintController {
             String feedback = request != null ? request.getFeedback() : null;
             Complaint c = complaintService.reopenComplaint(id, feedback, authentication);
             return ResponseEntity.ok(toDto(c));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.status(400).body(Map.of("message", e.getMessage()));
+        }
+    }
+
+    @PostMapping("/{id}/feedback")
+    public ResponseEntity<?> addCitizenFeedback(
+            @PathVariable Long id,
+            @RequestBody FeedbackRequest request,
+            Authentication authentication) {
+        try {
+            Complaint complaint = complaintService.addCitizenFeedback(id, request.getFeedback(), authentication);
+            return ResponseEntity.ok(toDto(complaint, authentication));
         } catch (IllegalArgumentException e) {
             return ResponseEntity.status(400).body(Map.of("message", e.getMessage()));
         }
@@ -491,6 +529,11 @@ public class ComplaintController {
 
     @Data
     static class ReopenRequest {
+        private String feedback;
+    }
+
+    @Data
+    static class FeedbackRequest {
         private String feedback;
     }
 

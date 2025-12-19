@@ -19,6 +19,7 @@ import {
   updateComplaint,
   withdrawComplaint,
   uploadResolutionPhoto,
+  addCitizenFeedback,
 } from "../services/api";
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
@@ -85,6 +86,9 @@ export default function ComplaintDetails() {
   const [editingNoteContent, setEditingNoteContent] = useState("");
   const [resolutionPhoto, setResolutionPhoto] = useState(null);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
+  const [citizenFeedback, setCitizenFeedback] = useState("");
+  const [showFeedbackDialog, setShowFeedbackDialog] = useState(false);
+  const [submittingFeedback, setSubmittingFeedback] = useState(false);
 
   useEffect(() => {
     if (!user) {
@@ -196,6 +200,21 @@ export default function ComplaintDetails() {
       await loadComplaint();
     } catch (err) {
       setError(err.message);
+    }
+  }
+
+  async function handleSubmitFeedback() {
+    if (!citizenFeedback.trim()) return;
+    try {
+      setSubmittingFeedback(true);
+      await addCitizenFeedback(id, citizenFeedback);
+      setShowFeedbackDialog(false);
+      setCitizenFeedback("");
+      await loadComplaint();
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setSubmittingFeedback(false);
     }
   }
 
@@ -835,13 +854,35 @@ export default function ComplaintDetails() {
                 </>
               )}
               {user.role === "CITIZEN" && complaint.status === "RESOLVED" && (
-                <Button
-                  onClick={() => setShowReopenDialog(true)}
-                  variant="outline"
-                  className="w-full"
-                >
-                  Reopen Complaint
-                </Button>
+                <div className="space-y-2">
+                  <Button
+                    onClick={() => setShowReopenDialog(true)}
+                    variant="outline"
+                    className="w-full"
+                  >
+                    Reopen Complaint
+                  </Button>
+                  {!complaint.hasCitizenFeedback ? (
+                    <Button
+                      onClick={() => setShowFeedbackDialog(true)}
+                      variant="secondary"
+                      className="w-full gap-2"
+                    >
+                      <MessageSquare className="w-4 h-4" />
+                      Add Feedback
+                    </Button>
+                  ) : (
+                    <div className="bg-green-50 border border-green-200 rounded-md p-3 text-sm text-green-700">
+                      <div className="flex items-center gap-2">
+                        <MessageSquare className="w-4 h-4" />
+                        <span className="font-medium">Feedback submitted</span>
+                      </div>
+                      <p className="text-xs mt-1 text-green-600">
+                        Thank you for your feedback!
+                      </p>
+                    </div>
+                  )}
+                </div>
               )}
 
               {user.role === "ADMIN" && (
@@ -897,6 +938,31 @@ export default function ComplaintDetails() {
               )}
             </CardContent>
           </Card>
+
+          {/* Citizen Feedback Card - Only visible to admins */}
+          {user.role === "ADMIN" && complaint.citizenFeedback && (
+            <Card className="border-0 shadow-md bg-amber-50">
+              <CardHeader className="pb-2">
+                <CardTitle className="flex items-center gap-2 text-lg font-semibold text-amber-800">
+                  <MessageSquare className="w-4 h-4" />
+                  Citizen Feedback
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="bg-white rounded-md p-4 border border-amber-200">
+                  <p className="text-gray-700 whitespace-pre-wrap">
+                    {complaint.citizenFeedback}
+                  </p>
+                  {complaint.citizenFeedbackAt && (
+                    <p className="text-xs text-gray-500 mt-2">
+                      Submitted on{" "}
+                      {new Date(complaint.citizenFeedbackAt).toLocaleString()}
+                    </p>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          )}
 
           {/* Updates & Notes Card */}
           <Card className="border-0 shadow-md">
@@ -1271,6 +1337,58 @@ export default function ComplaintDetails() {
             </Button>
             <Button onClick={handleReopen} disabled={!reopenFeedback.trim()}>
               Submit & Reopen
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Citizen Feedback Dialog */}
+      <Dialog open={showFeedbackDialog} onOpenChange={setShowFeedbackDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Add Feedback</DialogTitle>
+            <DialogDescription>
+              Please share your feedback about how this complaint was resolved.
+              Your feedback helps us improve our services.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <Label htmlFor="citizen-feedback" className="text-sm font-medium">
+                Your Feedback
+              </Label>
+              <Textarea
+                id="citizen-feedback"
+                placeholder="Share your experience with the resolution process..."
+                value={citizenFeedback}
+                onChange={(e) => setCitizenFeedback(e.target.value)}
+                rows={5}
+                className="mt-2"
+              />
+            </div>
+            {error && (
+              <Alert variant="destructive">
+                <AlertCircle className="h-4 w-4" />
+                <AlertDescription>{error}</AlertDescription>
+              </Alert>
+            )}
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setShowFeedbackDialog(false);
+                setCitizenFeedback("");
+                setError("");
+              }}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleSubmitFeedback}
+              disabled={!citizenFeedback.trim() || submittingFeedback}
+            >
+              {submittingFeedback ? "Submitting..." : "Submit Feedback"}
             </Button>
           </DialogFooter>
         </DialogContent>
