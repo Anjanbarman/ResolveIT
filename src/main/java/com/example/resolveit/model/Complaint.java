@@ -85,6 +85,12 @@ public class Complaint {
     @Column
     private String resolutionPhotoPath;
 
+    @Column(length = 2000)
+    private String citizenFeedback;
+
+    @Column
+    private LocalDateTime citizenFeedbackAt;
+
     @OneToMany(mappedBy = "complaint", cascade = CascadeType.ALL, orphanRemoval = true)
     @Builder.Default
     private List<PublicUpdate> publicUpdates = new ArrayList<>();

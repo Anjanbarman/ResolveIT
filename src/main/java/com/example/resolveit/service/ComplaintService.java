@@ -646,4 +646,34 @@ public class ComplaintService {
 
         return filename;
     }
+
+    public Complaint addCitizenFeedback(Long id, String feedback, Authentication authentication) {
+        Long safeId = java.util.Objects.requireNonNull(id, "id cannot be null");
+        Complaint complaint = complaintRepository.findById(safeId)
+                .orElseThrow(() -> new IllegalArgumentException("Complaint not found"));
+
+        String email = authentication.getName();
+        User user = userRepository.findByEmail(email).orElseThrow();
+
+        if (user.getRole() != UserRole.CITIZEN) {
+            throw new IllegalArgumentException("Only citizens can add feedback");
+        }
+
+        if (complaint.getReporter() == null || !complaint.getReporter().getId().equals(user.getId())) {
+            throw new IllegalArgumentException("Access denied");
+        }
+
+        if (complaint.getStatus() != ComplaintStatus.RESOLVED) {
+            throw new IllegalArgumentException("Feedback can only be added to resolved complaints");
+        }
+
+        if (feedback == null || feedback.trim().isEmpty()) {
+            throw new IllegalArgumentException("Feedback cannot be empty");
+        }
+
+        complaint.setCitizenFeedback(feedback.trim());
+        complaint.setCitizenFeedbackAt(LocalDateTime.now());
+
+        return complaintRepository.save(complaint);
+    }
 }
