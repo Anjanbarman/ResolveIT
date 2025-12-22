@@ -109,6 +109,16 @@ export default function Dashboard() {
     return colors[priority] || "bg-gray-100 text-gray-700";
   };
 
+  // Check if complaint is overdue (past deadline and not resolved/completed)
+  const isOverdue = (complaint) => {
+    if (!complaint.targetResolutionDate) return false;
+    const deadline = new Date(complaint.targetResolutionDate);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const terminalStatuses = ["RESOLVED", "REJECTED", "WITHDRAWN"];
+    return deadline < today && !terminalStatuses.includes(complaint.status);
+  };
+
   if (!user) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
@@ -364,6 +374,16 @@ export default function Dashboard() {
                     ? "Latest complaints"
                     : "Your most recent complaint submissions"}
                 </CardDescription>
+                {user.role === "ADMIN" && (
+                  <div className="flex items-center gap-2 mt-2 text-xs text-gray-500">
+                    <div className="flex items-center gap-1">
+                      <div className="w-3 h-3 bg-red-50 border-l-2 border-l-red-500 rounded-sm"></div>
+                      <span>
+                        Red rows = Overdue (past deadline, needs reassignment)
+                      </span>
+                    </div>
+                  </div>
+                )}
               </div>
               <div className="shrink-0 flex gap-2">
                 {user.role === "CITIZEN" && (
@@ -443,7 +463,16 @@ export default function Dashboard() {
                           onClick={() =>
                             navigate(`/complaints/${complaint.id}`)
                           }
-                          className="border-b border-gray-100 hover:bg-gray-50/80 hover:shadow-sm cursor-pointer transition-colors"
+                          className={`border-b border-gray-100 hover:shadow-sm cursor-pointer transition-colors ${
+                            user.role === "ADMIN" && isOverdue(complaint)
+                              ? "bg-red-50 hover:bg-red-100 border-l-4 border-l-red-500"
+                              : "hover:bg-gray-50/80"
+                          }`}
+                          title={
+                            user.role === "ADMIN" && isOverdue(complaint)
+                              ? "Overdue - Consider reassigning to another officer"
+                              : ""
+                          }
                         >
                           <td className="py-4 px-4 text-sm font-medium text-gray-900">
                             #{complaint.id}
@@ -467,18 +496,26 @@ export default function Dashboard() {
                             </Badge>
                           </td>
                           <td className="py-4 px-4">
-                            <Badge
-                              className={
-                                getStatusColor(
-                                  displayStatusForRole(complaint.status)
-                                ) + " border"
-                              }
-                            >
-                              {displayStatusForRole(complaint.status).replace(
-                                "_",
-                                " "
-                              )}
-                            </Badge>
+                            <div className="flex items-center gap-2">
+                              <Badge
+                                className={
+                                  getStatusColor(
+                                    displayStatusForRole(complaint.status)
+                                  ) + " border"
+                                }
+                              >
+                                {displayStatusForRole(complaint.status).replace(
+                                  "_",
+                                  " "
+                                )}
+                              </Badge>
+                              {user.role === "ADMIN" &&
+                                isOverdue(complaint) && (
+                                  <Badge className="bg-red-500 text-white border-red-600 animate-pulse">
+                                    OVERDUE
+                                  </Badge>
+                                )}
+                            </div>
                           </td>
                           <td className="py-4 px-4 text-sm text-gray-600">
                             {new Date(complaint.createdAt).toLocaleDateString()}

@@ -214,6 +214,16 @@ export default function ComplaintList() {
     return colors[priority] || "bg-gray-100 text-gray-700";
   };
 
+  // Check if complaint is overdue (past deadline and not resolved/completed)
+  const isOverdue = (complaint) => {
+    if (!complaint.targetResolutionDate) return false;
+    const deadline = new Date(complaint.targetResolutionDate);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const terminalStatuses = ["RESOLVED", "REJECTED", "WITHDRAWN"];
+    return deadline < today && !terminalStatuses.includes(complaint.status);
+  };
+
   const filterButtons = (() => {
     if (user.role === "OFFICER") {
       return [
@@ -496,6 +506,17 @@ export default function ComplaintList() {
               {filteredComplaints.length} Complaint
               {filteredComplaints.length !== 1 ? "s" : ""}
             </CardTitle>
+            {user.role === "ADMIN" && (
+              <div className="flex items-center gap-2 mt-1 text-xs text-gray-500">
+                <div className="flex items-center gap-1">
+                  <div className="w-3 h-3 bg-red-50 border-l-2 border-l-red-500 rounded-sm"></div>
+                  <span>
+                    Red rows = Overdue complaints (past deadline, consider
+                    reassigning to another officer)
+                  </span>
+                </div>
+              </div>
+            )}
           </CardHeader>
           <CardContent>
             {loading ? (
@@ -575,7 +596,16 @@ export default function ComplaintList() {
                     {filteredComplaints.map((complaint) => (
                       <tr
                         key={complaint.id}
-                        className="border-b border-gray-100 hover:bg-gray-50/80 transition-colors"
+                        className={`border-b border-gray-100 transition-colors ${
+                          user.role === "ADMIN" && isOverdue(complaint)
+                            ? "bg-red-50 hover:bg-red-100 border-l-4 border-l-red-500"
+                            : "hover:bg-gray-50/80"
+                        }`}
+                        title={
+                          user.role === "ADMIN" && isOverdue(complaint)
+                            ? "Overdue - Consider reassigning to another officer"
+                            : ""
+                        }
                       >
                         <td className="py-2.5 px-3">
                           <input
@@ -617,24 +647,31 @@ export default function ComplaintList() {
                           </Badge>
                         </td>
                         <td className="py-2.5 px-3">
-                          <Badge
-                            className={
-                              getStatusColor(
-                                (user.role === "CITIZEN" ||
-                                  user.role === "ADMIN") &&
-                                  complaint.status === "COMPLETED"
-                                  ? "IN_PROGRESS"
-                                  : complaint.status
-                              ) + " border"
-                            }
-                          >
-                            {((user.role === "CITIZEN" ||
-                              user.role === "ADMIN") &&
-                            complaint.status === "COMPLETED"
-                              ? "IN_PROGRESS"
-                              : complaint.status
-                            ).replace("_", " ")}
-                          </Badge>
+                          <div className="flex items-center gap-2">
+                            <Badge
+                              className={
+                                getStatusColor(
+                                  (user.role === "CITIZEN" ||
+                                    user.role === "ADMIN") &&
+                                    complaint.status === "COMPLETED"
+                                    ? "IN_PROGRESS"
+                                    : complaint.status
+                                ) + " border"
+                              }
+                            >
+                              {((user.role === "CITIZEN" ||
+                                user.role === "ADMIN") &&
+                              complaint.status === "COMPLETED"
+                                ? "IN_PROGRESS"
+                                : complaint.status
+                              ).replace("_", " ")}
+                            </Badge>
+                            {user.role === "ADMIN" && isOverdue(complaint) && (
+                              <Badge className="bg-red-500 text-white border-red-600 animate-pulse">
+                                OVERDUE
+                              </Badge>
+                            )}
+                          </div>
                         </td>
                         <td className="py-2.5 px-3 text-gray-600">
                           {new Date(complaint.createdAt).toLocaleDateString()}
