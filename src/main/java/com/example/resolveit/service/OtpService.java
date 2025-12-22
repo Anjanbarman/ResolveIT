@@ -87,9 +87,6 @@ public class OtpService {
         return "OTP sent successfully to +91" + normalizedPhone;
     }
 
-    /**
-     * Sends SMS using 2Factor.in (Free 25 OTP SMS trial)
-     */
     private void sendSms(String phoneNumber, String otpCode) {
         if (twoFactorApiKey != null && !twoFactorApiKey.isEmpty()) {
             try {
@@ -120,9 +117,6 @@ public class OtpService {
         log.info("===============================================");
     }
 
-    /**
-     * Verifies the OTP for the given phone number
-     */
     @Transactional
     public boolean verifyOtp(String phoneNumber, String otpCode) {
         String normalizedPhone = normalizePhoneNumber(phoneNumber);
@@ -153,9 +147,6 @@ public class OtpService {
         return true;
     }
 
-    /**
-     * Verifies OTP and links phone number to user
-     */
     @Transactional
     public User verifyOtpAndLinkToUser(String phoneNumber, String otpCode, String userEmail) {
         String normalizedPhone = normalizePhoneNumber(phoneNumber);

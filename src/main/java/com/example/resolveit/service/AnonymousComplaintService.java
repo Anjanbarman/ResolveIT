@@ -19,9 +19,6 @@ public class AnonymousComplaintService {
 
     private final ComplaintRepository complaintRepository;
 
-    /**
-     * Track complaint by tracking ID - no authentication required
-     */
     public ComplaintTrackingResponse trackComplaint(String trackingId) {
         String normalizedTrackingId = trackingId.toUpperCase().trim();
 

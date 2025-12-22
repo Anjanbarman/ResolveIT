@@ -19,9 +19,6 @@ public class AnonymousComplaintController {
 
     private final AnonymousComplaintService anonymousComplaintService;
 
-    /**
-     * Track complaint status by tracking ID - NO AUTHENTICATION REQUIRED
-     */
     @GetMapping("/track/{trackingId}")
     public ResponseEntity<ComplaintTrackingResponse> trackComplaint(
             @PathVariable String trackingId) {
@@ -30,9 +27,6 @@ public class AnonymousComplaintController {
         return ResponseEntity.ok(response);
     }
 
-    /**
-     * Get available complaint categories - NO AUTHENTICATION REQUIRED
-     */
     @GetMapping("/categories")
     public ResponseEntity<List<Map<String, String>>> getCategories() {
         List<Map<String, String>> categories = Arrays.stream(ComplaintCategory.values())
